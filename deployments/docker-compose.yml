@@ -1,0 +1,21 @@
+version: '3.9'
+services:
+  go-search:
+    restart: always
+    tty: true
+    container_name: go-search
+    hostname: go-search
+    build:
+      target: dev
+      context: ../
+      dockerfile: deployments/app/Dockerfile
+    volumes:
+      - ../:/src
+    ports:
+      - "8080:8080"
+    networks:
+      - go-search-network
+
+networks:
+  go-search-network:
+    name: go-search-network
