@@ -1,7 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"go_search/internal/wiki"
+)
 
 func main() {
-	fmt.Println("go search app")
+	wiki.RunExampleWithOneQuery()
+	// wiki.RunExampleWithTwoQueries()
 }
