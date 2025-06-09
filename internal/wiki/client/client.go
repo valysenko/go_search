@@ -7,7 +7,7 @@ import (
 )
 
 type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
+	Get(url string) (resp *http.Response, err error)
 }
 
 type WikiClient struct {
@@ -34,14 +34,17 @@ func (wc *WikiClient) GetCategoryMembers(request *GetCategoryMembersRequest) ([]
 		request.CmContinue = cmContinue
 		params := request.UrlValues()
 
-		resp, err := http.Get(wc.apiUrl + "?" + params.Encode())
+		resp, err := wc.client.Get(wc.apiUrl + "?" + params.Encode())
 		if err != nil {
 			return nil, err
 		}
 		defer resp.Body.Close()
 
 		var result CategoryMembersResponse
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
 		json.Unmarshal(body, &result)
 
 		for _, item := range result.Query.CategoryMembers {
@@ -65,7 +68,7 @@ func (wc *WikiClient) GetCategoryMembers(request *GetCategoryMembersRequest) ([]
 // https://www.mediawiki.org/wiki/Extension:TextExtracts#API
 func (wc *WikiClient) GetArticleContent(request *GetArticleContentRequest) (*ArticleResponse, error) {
 	params := request.UrlValues()
-	resp, err := http.Get(wc.apiUrl + "?" + params.Encode())
+	resp, err := wc.client.Get(wc.apiUrl + "?" + params.Encode())
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +90,7 @@ func (wc *WikiClient) GetCategoryMembersWithPageContent(request *GetCategoryMemb
 		request.GcmContinue = gcmContinue
 		params := request.UrlValues()
 
-		resp, err := http.Get(wc.apiUrl + "?" + params.Encode())
+		resp, err := wc.client.Get(wc.apiUrl + "?" + params.Encode())
 		if err != nil {
 			return nil, err
 		}

@@ -1,10 +1,11 @@
 package main
 
-import (
-	"go_search/internal/wiki"
-)
+import "go_search/internal/devto"
+
+//import "go_search/internal/wiki"
 
 func main() {
-	wiki.RunExampleWithOneQuery()
+	devto.ExampleDevTo()
+	//wiki.RunExampleWithOneQuery()
 	// wiki.RunExampleWithTwoQueries()
 }
