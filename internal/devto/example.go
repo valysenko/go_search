@@ -9,8 +9,8 @@ import (
 func ExampleDevTo() {
 	page := 1
 	perPage := 30
+	client := devtoClient.NewDevToClient()
 	for {
-		client := devtoClient.NewDevToClient()
 		request := devtoClient.NewGetArticlesByTagRequest("scala", page, perPage)
 
 		result, _ := client.GetArticlesByTag(request)
