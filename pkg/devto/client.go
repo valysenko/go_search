@@ -1,4 +1,4 @@
-package client
+package devto
 
 import (
 	"encoding/json"
@@ -70,4 +70,29 @@ func (dc *DevToClient) GetArticleById(request *GetArticlesByIdRequest) (*Article
 	json.Unmarshal(body, &article)
 
 	return article, nil
+}
+
+// https://developers.forem.com/api/v1#tag/articles/operation/getLatestArticles
+func (dc *DevToClient) GeLatestArticles(request *GetLatestArticlesRequest) ([]ArticleSummary, error) {
+	url := fmt.Sprintf("%s/articles/latest?per_page=%d&page=%d", dc.apiBaseUrl, request.PerPage, request.Page)
+	fmt.Println("url=", url)
+	resp, err := dc.client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("error: status code %d", resp.StatusCode)
+	}
+
+	var articles []ArticleSummary
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal(body, &articles)
+
+	return articles, nil
+
 }

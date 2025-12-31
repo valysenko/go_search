@@ -1,4 +1,4 @@
-package client
+package hashnode
 
 // https://apidocs.hashnode.com/?source=legacy-api-page#definition-TagPostsSort
 type SortBy string

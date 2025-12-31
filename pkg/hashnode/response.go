@@ -1,4 +1,6 @@
-package client
+package hashnode
+
+import "time"
 
 type PostsByTagResponse struct {
 	Tag Tag `json:"tag"`
@@ -29,7 +31,7 @@ type Post struct {
 	ID          string      `json:"id"`
 	Title       string      `json:"title"`
 	URL         string      `json:"url"`
-	PublishedAt string      `json:"publishedAt"`
+	PublishedAt time.Time   `json:"publishedAt"`
 	Author      Author      `json:"author"`
 	Content     PostContent `json:"content"`
 }

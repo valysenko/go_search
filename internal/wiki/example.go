@@ -2,38 +2,56 @@ package wiki
 
 import (
 	"fmt"
-	wikiCLientPkg "go_search/internal/wiki/client"
-	"strconv"
+	"go_search/internal/wiki/provider"
+	wikiCLientPkg "go_search/pkg/wiki"
+	"time"
 )
 
 func RunExampleWithOneQuery() {
 	client := wikiCLientPkg.NewWikiClient()
-	category := "Techno"
-
-	categoryMembers, err := client.GetCategoryMembersWithPageContent(wikiCLientPkg.NewGetCategoryMembersWithGeneratorRequest(category))
+	category := "Physics"
+	s := "2025-07-25T00:00:00Z"
+	articlesFrom, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		panic(err)
 	}
-	for _, member := range categoryMembers {
-		fmt.Println(strconv.Itoa(member.PageID) + " - " + member.Title)
+
+	var pages []*wikiCLientPkg.WikiPage
+	request := wikiCLientPkg.NewGetCategoryMembersWithGeneratorRequest(category)
+L:
+	for {
+		response, err := client.GetAllCategoryMembersWithPageContent(request)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, page := range response.Query.Pages {
+			if page.Revisions[0].Timestamp.Before(articlesFrom) {
+				fmt.Println("Reached articles before", page.Revisions[0].Timestamp.GoString())
+				break L
+			}
+			pages = append(pages, &page)
+			fmt.Println(page.Title, " - ", page.Revisions[0].Timestamp.GoString())
+		}
+
+		// problem: no cmcontinue in response, only rvcontinue
+		if response.Continue.CmContinue == "" {
+			break L
+		}
+
+		request.GcmContinue = response.Continue.CmContinue
 	}
 }
 
 func RunExampleWithTwoQueries() {
 	client := wikiCLientPkg.NewWikiClient()
 	category := "Physics"
-
-	categoryMembers, err := client.GetCategoryMembers(wikiCLientPkg.NewGetCategoryMembersRequest(category, ""))
+	s := "2025-07-25T00:00:00Z"
+	articlesFrom, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		panic(err)
 	}
 
-	// for _, member := range categoryMembers {
-	// 	fmt.Println(strconv.Itoa(member.PageID) + " - " + member.Title)
-	// }
-
-	for _, member := range categoryMembers {
-		response, _ := client.GetArticleContent(wikiCLientPkg.NewGetArticleContentRequest(strconv.Itoa(member.PageID)))
-		fmt.Println(response.Query.Pages)
-	}
+	provider := provider.NewWiki(client)
+	err = provider.FetchArticles(nil, articlesFrom, category)
 }

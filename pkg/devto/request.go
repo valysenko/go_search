@@ -1,4 +1,4 @@
-package client
+package devto
 
 type GetArticlesByTagRequest struct {
 	Tag     string
@@ -21,5 +21,17 @@ type GetArticlesByIdRequest struct {
 func NewGetArticlesByIdRequest(id int) *GetArticlesByIdRequest {
 	return &GetArticlesByIdRequest{
 		ID: id,
+	}
+}
+
+type GetLatestArticlesRequest struct {
+	Page    int
+	PerPage int
+}
+
+func NewGetLatestArticlesRequest(page int, perPage int) *GetLatestArticlesRequest {
+	return &GetLatestArticlesRequest{
+		Page:    page,
+		PerPage: perPage,
 	}
 }

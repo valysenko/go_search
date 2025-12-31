@@ -1,30 +1,20 @@
 package devto
 
 import (
-	"fmt"
-	devtoClient "go_search/internal/devto/client"
-	"strconv"
+	"go_search/internal/devto/provider"
+	devtoClient "go_search/pkg/devto"
+	"time"
 )
 
-func ExampleDevTo() {
-	page := 1
-	perPage := 30
-	client := devtoClient.NewDevToClient()
-	for {
-		request := devtoClient.NewGetArticlesByTagRequest("scala", page, perPage)
+func ExampleProvider() {
+	provider := provider.NewDevToProvider(devtoClient.NewDevToClient())
 
-		result, _ := client.GetArticlesByTag(request)
-		fmt.Println("received count=" + strconv.Itoa(len(result)))
-
-		for _, articleSummary := range result {
-			request := devtoClient.NewGetArticlesByIdRequest(articleSummary.ID)
-			article, _ := client.GetArticleById(request)
-			fmt.Println(article.Title)
-		}
-
-		page++
-		if len(result) < perPage {
-			break
-		}
+	expectedTags := []string{"go", "golang", "programming", "ai"}
+	s := "2025-12-25T00:00:00Z"
+	articlesFrom, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		panic(err)
 	}
+
+	provider.FetchArticles(nil, articlesFrom, expectedTags)
 }
