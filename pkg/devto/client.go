@@ -8,6 +8,11 @@ import (
 
 const baseUrl = "https://dev.to/api"
 
+/**
+* @deprecated
+* go:generatego run github.com/vektra/mockery/v2@v2.42.0 --name=HTTPClient --case snake
+ */
+// need to run from the root: go run github.com/vektra/mockery/v3@v3.6.1
 type HTTPClient interface {
 	Get(ctx context.Context, path string, headers httpclient.Headers, out any) error
 }
@@ -29,13 +34,12 @@ func (dc *DevToClient) GetArticlesByTag(ctx context.Context, request *GetArticle
 
 	url := fmt.Sprintf("/articles?tag=%s&per_page=%d&page=%d", request.Tag, request.PerPage, request.Page)
 	var articles []ArticleSummary
-	err := dc.client.Get(ctx, url, nil, articles)
+	err := dc.client.Get(ctx, url, nil, &articles)
 	if err != nil {
 		return nil, err
 	}
 
 	return articles, nil
-
 }
 
 // https://developers.forem.com/api/v1#tag/articles/operation/getArticleById
@@ -61,5 +65,4 @@ func (dc *DevToClient) GetLatestArticles(ctx context.Context, request *GetLatest
 	}
 
 	return articles, nil
-
 }

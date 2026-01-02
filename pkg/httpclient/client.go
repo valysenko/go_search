@@ -3,15 +3,27 @@ package httpclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
 
+var (
+	ErrClientError      = errors.New("client error")
+	ErrServerError      = errors.New("server error")
+	ErrUnexpectedStatus = errors.New("unexpected status code")
+)
+
 type Headers map[string]string
 
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 type HttpClient struct {
-	http    *http.Client
+	http    HTTPClient
 	baseUrl string
 }
 
@@ -41,15 +53,45 @@ func (c *HttpClient) Get(ctx context.Context, path string, headers Headers, out 
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("unexpected status: %d", resp.StatusCode)
+		return c.handleErrorStatus(resp, path)
 	}
 
 	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+func (c *HttpClient) handleErrorStatus(resp *http.Response, path string) error {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read error response body for %s: %w", path, err)
+	}
+
+	var errResp struct {
+		Message string `json:"message"`
+	}
+	var errMsg string
+	if json.Unmarshal(body, &errResp) == nil && errResp.Message != "" {
+		errMsg = errResp.Message
+	}
+
+	switch {
+	case resp.StatusCode >= 400 && resp.StatusCode < 500:
+		if errMsg != "" {
+			return fmt.Errorf("client error %d for %s (%s): %w", resp.StatusCode, path, errMsg, ErrClientError)
+		}
+		return fmt.Errorf("client error %d for %s: %w", resp.StatusCode, path, ErrClientError)
+	case resp.StatusCode >= 500:
+		if errMsg != "" {
+			return fmt.Errorf("server error %d for %s (%s): %w", resp.StatusCode, path, errMsg, ErrServerError)
+		}
+		return fmt.Errorf("server error %d for %s: %w", resp.StatusCode, path, ErrServerError)
+	default:
+		return fmt.Errorf("unexpected status code %d for %s: %w", resp.StatusCode, path, ErrUnexpectedStatus)
+	}
 }
 
 // example: methods with receivers can't use generics

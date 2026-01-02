@@ -1,0 +1,28 @@
+# packages:
+#   go_search/pkg/devto:
+#     config:
+#       all: true
+# packages:
+#   go_search/pkg/devto:
+#     interfaces:
+#       HTTPClient: ~
+# from the root: go run github.com/vektra/mockery/v3@v3.6.1
+all: false
+dir: '{{.InterfaceDir}}'
+filename: 'mocks/{{.InterfaceName}}_mock.go'
+force-file-write: true
+formatter: goimports
+generate: true
+include-auto-generated: false
+log-level: info
+structname: '{{.Mock}}{{.InterfaceName}}'
+# pkgname: '{{.SrcPackageName}}'
+pkgname: 'mocks'
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: '{{.Template}}.schema.json'
+packages:
+  go_search/pkg/devto:
+    interfaces:
+      HTTPClient:

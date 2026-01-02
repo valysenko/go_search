@@ -13,3 +13,5 @@ down:
 
 exec:
 	docker exec -it go-search sh
+test:
+	docker exec go-search go test -v ./...
