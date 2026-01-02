@@ -1,8 +1,8 @@
 package hashnode
 
 import (
+	"context"
 	"go_search/internal/hashnode/provider"
-	hnClient "go_search/pkg/hashnode"
 	"time"
 )
 
@@ -14,6 +14,6 @@ func ExampleHashnodeProvider() {
 		panic(err)
 	}
 
-	provider := provider.NewHashnode(hnClient.NewHashnodeClient())
-	provider.FetchArticles(nil, articlesFrom, expectedTag)
+	provider := provider.NewHashnode()
+	provider.FetchArticles(context.Background(), articlesFrom, expectedTag)
 }

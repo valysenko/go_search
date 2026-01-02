@@ -1,14 +1,15 @@
 package devto
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
+	"go_search/pkg/httpclient"
 )
 
+const baseUrl = "https://dev.to/api"
+
 type HTTPClient interface {
-	Get(url string) (resp *http.Response, err error)
+	Get(ctx context.Context, path string, headers httpclient.Headers, out any) error
 }
 
 type DevToClient struct {
@@ -16,82 +17,48 @@ type DevToClient struct {
 	apiBaseUrl string
 }
 
-func NewDevToClient() *DevToClient {
+func NewDevToClient(timeoutSeconds int) *DevToClient {
 	return &DevToClient{
-		client:     &http.Client{},
-		apiBaseUrl: "https://dev.to/api",
+		client: httpclient.NewHttpClient(timeoutSeconds, baseUrl),
 	}
 }
 
 // https://developers.forem.com/api/v1#tag/articles/operation/getArticles
 // https://dev.to/tags
-func (dc *DevToClient) GetArticlesByTag(request *GetArticlesByTagRequest) ([]ArticleSummary, error) {
-	url := fmt.Sprintf("%s/articles?tag=%s&per_page=%d&page=%d", dc.apiBaseUrl, request.Tag, request.PerPage, request.Page)
-	fmt.Println("url=", url)
-	resp, err := dc.client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+func (dc *DevToClient) GetArticlesByTag(ctx context.Context, request *GetArticlesByTagRequest) ([]ArticleSummary, error) {
 
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("error: status code %d", resp.StatusCode)
-	}
-
+	url := fmt.Sprintf("/articles?tag=%s&per_page=%d&page=%d", request.Tag, request.PerPage, request.Page)
 	var articles []ArticleSummary
-	body, err := io.ReadAll(resp.Body)
+	err := dc.client.Get(ctx, url, nil, articles)
 	if err != nil {
 		return nil, err
 	}
-	json.Unmarshal(body, &articles)
 
 	return articles, nil
 
 }
 
 // https://developers.forem.com/api/v1#tag/articles/operation/getArticleById
-func (dc *DevToClient) GetArticleById(request *GetArticlesByIdRequest) (*Article, error) {
-	url := fmt.Sprintf("%s/articles/%d", dc.apiBaseUrl, request.ID)
-	resp, err := dc.client.Get(url)
+func (dc *DevToClient) GetArticleById(ctx context.Context, request *GetArticlesByIdRequest) (*Article, error) {
+	url := fmt.Sprintf("/articles/%d", request.ID)
+	var article Article
+	err := dc.client.Get(ctx, url, nil, &article)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("error: status code %d", resp.StatusCode)
-	}
-
-	var article *Article
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	json.Unmarshal(body, &article)
-
-	return article, nil
+	return &article, nil
 }
 
 // https://developers.forem.com/api/v1#tag/articles/operation/getLatestArticles
-func (dc *DevToClient) GeLatestArticles(request *GetLatestArticlesRequest) ([]ArticleSummary, error) {
-	url := fmt.Sprintf("%s/articles/latest?per_page=%d&page=%d", dc.apiBaseUrl, request.PerPage, request.Page)
-	fmt.Println("url=", url)
-	resp, err := dc.client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("error: status code %d", resp.StatusCode)
-	}
+func (dc *DevToClient) GetLatestArticles(ctx context.Context, request *GetLatestArticlesRequest) ([]ArticleSummary, error) {
+	url := fmt.Sprintf("/articles/latest?per_page=%d&page=%d", request.PerPage, request.Page)
 
 	var articles []ArticleSummary
-	body, err := io.ReadAll(resp.Body)
+	err := dc.client.Get(ctx, url, nil, &articles)
 	if err != nil {
 		return nil, err
 	}
-	json.Unmarshal(body, &articles)
 
 	return articles, nil
 

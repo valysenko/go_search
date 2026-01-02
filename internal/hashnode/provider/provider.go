@@ -11,9 +11,9 @@ type Hashnode struct {
 	client *hashnode.HashnodeClient
 }
 
-func NewHashnode(client *hashnode.HashnodeClient) *Hashnode {
+func NewHashnode() *Hashnode {
 	return &Hashnode{
-		client: client,
+		client: hashnode.NewHashnodeClient(),
 	}
 }
 
@@ -22,7 +22,6 @@ func (hn *Hashnode) Name() string {
 }
 
 func (hn *Hashnode) FetchArticles(ctx context.Context, articlesSince time.Time, tagSlug string) ([]hashnode.FeedPostConnection, error) {
-	//slug := "programming"
 	sortBy := hashnode.SortByRecent
 	first := 10
 	var after *string
@@ -30,7 +29,7 @@ func (hn *Hashnode) FetchArticles(ctx context.Context, articlesSince time.Time, 
 L:
 	for {
 		request := hashnode.NewGetArticlesByTagRequest(tagSlug, first, sortBy, after)
-		responseData, err := hn.client.GetPostsByTag(request)
+		responseData, err := hn.client.GetPostsByTag(ctx, request)
 		if err != nil {
 			panic(err)
 		}

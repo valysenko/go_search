@@ -15,7 +15,7 @@ type Article struct {
 	Title        string    `json:"title"`
 	BodyHTML     string    `json:"body_html"`
 	BodyMarkdown string    `json:"body_markdown"`
-	TagList      []string  `json:"tag_list"`
+	TagList      []string  `json:"tags"`
 	Url          string    `json:"url"`
 	PublishedAt  time.Time `json:"published_at"`
 }

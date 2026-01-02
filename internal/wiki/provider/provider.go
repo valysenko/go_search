@@ -28,7 +28,7 @@ func (d *Wiki) FetchArticles(ctx context.Context, articlesSince time.Time, categ
 L:
 	for {
 
-		categoryMemberResponse, err := d.client.GetCategoryMembers(request)
+		categoryMemberResponse, err := d.client.GetCategoryMembers(ctx, request)
 		if err != nil {
 			panic(err)
 		}
@@ -39,7 +39,7 @@ L:
 				break L
 			}
 
-			article, _ := d.client.GetArticleContent(wiki.NewGetArticleContentRequest(strconv.Itoa(item.PageID)))
+			article, _ := d.client.GetArticleContent(ctx, wiki.NewGetArticleContentRequest(strconv.Itoa(item.PageID)))
 			fmt.Println(article.Query.Pages[strconv.Itoa(item.PageID)].Title, " - ", item.Timestamp.GoString())
 		}
 

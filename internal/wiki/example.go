@@ -1,6 +1,7 @@
 package wiki
 
 import (
+	"context"
 	"fmt"
 	"go_search/internal/wiki/provider"
 	wikiCLientPkg "go_search/pkg/wiki"
@@ -8,7 +9,7 @@ import (
 )
 
 func RunExampleWithOneQuery() {
-	client := wikiCLientPkg.NewWikiClient()
+	client := wikiCLientPkg.NewWikiClient(10)
 	category := "Physics"
 	s := "2025-07-25T00:00:00Z"
 	articlesFrom, err := time.Parse(time.RFC3339, s)
@@ -20,7 +21,7 @@ func RunExampleWithOneQuery() {
 	request := wikiCLientPkg.NewGetCategoryMembersWithGeneratorRequest(category)
 L:
 	for {
-		response, err := client.GetAllCategoryMembersWithPageContent(request)
+		response, err := client.GetAllCategoryMembersWithPageContent(context.Background(), request)
 		if err != nil {
 			panic(err)
 		}
@@ -44,7 +45,7 @@ L:
 }
 
 func RunExampleWithTwoQueries() {
-	client := wikiCLientPkg.NewWikiClient()
+	client := wikiCLientPkg.NewWikiClient(10)
 	category := "Physics"
 	s := "2025-07-25T00:00:00Z"
 	articlesFrom, err := time.Parse(time.RFC3339, s)
@@ -53,5 +54,5 @@ func RunExampleWithTwoQueries() {
 	}
 
 	provider := provider.NewWiki(client)
-	err = provider.FetchArticles(nil, articlesFrom, category)
+	err = provider.FetchArticles(context.Background(), articlesFrom, category)
 }

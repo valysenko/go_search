@@ -31,9 +31,8 @@ L:
 	for {
 		request := devto.NewGetLatestArticlesRequest(page, perPage)
 
-		result, _ := d.client.GeLatestArticles(request)
+		result, _ := d.client.GetLatestArticles(ctx, request)
 		fmt.Println("received count=" + strconv.Itoa(len(result)))
-
 		i := 0
 
 		for _, articleSummary := range result {
@@ -44,7 +43,12 @@ L:
 
 			if helpers.HasAny(articleSummary.TagList, expectedTags) {
 				request := devto.NewGetArticlesByIdRequest(articleSummary.ID)
-				article, _ := d.client.GetArticleById(request)
+				article, err := d.client.GetArticleById(ctx, request)
+				if err != nil {
+					fmt.Println(" error=" + err.Error())
+					continue
+				}
+
 				fmt.Println("#" + strconv.Itoa(i) + " - " + article.PublishedAt.GoString() + " - " + article.Title)
 				i++
 			}
