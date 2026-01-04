@@ -1,6 +1,9 @@
 package wiki
 
-import "time"
+import (
+	"net/url"
+	"time"
+)
 
 // Category Members Response
 
@@ -25,6 +28,23 @@ type ArticleResponse struct {
 	Query struct {
 		Pages map[string]Page `json:"pages"`
 	} `json:"query"`
+}
+
+func (ar *ArticleResponse) GetArticleExtract(pageID string) string {
+	return ar.Query.Pages[pageID].Extract
+}
+
+func (ar *ArticleResponse) GetArticleID(pageID string) int {
+	return ar.Query.Pages[pageID].PageID
+}
+
+func (ar *ArticleResponse) GetArticleTitle(pageID string) string {
+	return ar.Query.Pages[pageID].Title
+}
+
+func (ar *ArticleResponse) GetArticleUrl(pageID string) string {
+	encodedTitle := url.PathEscape(ar.Query.Pages[pageID].Title)
+	return "https://en.wikipedia.org/wiki/" + encodedTitle
 }
 
 type Page struct {

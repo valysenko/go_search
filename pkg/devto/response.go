@@ -18,4 +18,9 @@ type Article struct {
 	TagList      []string  `json:"tags"`
 	Url          string    `json:"url"`
 	PublishedAt  time.Time `json:"published_at"`
+	User         User      `json:"user"`
+}
+
+type User struct {
+	Name string `json:"name"`
 }

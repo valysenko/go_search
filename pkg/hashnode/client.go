@@ -35,11 +35,9 @@ query PostsByTagQuery($slug: String!, $first: Int!, $sortBy: TagPostsSort!, $aft
 					title
 					url
 					author {
-						username
+						name
 					}
 					content {
-						markdown
-						html
 						text
 					}
 					publishedAt

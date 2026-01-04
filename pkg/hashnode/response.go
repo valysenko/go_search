@@ -34,18 +34,20 @@ type Post struct {
 	PublishedAt time.Time   `json:"publishedAt"`
 	Author      Author      `json:"author"`
 	Content     PostContent `json:"content"`
+	// Tags        []Tag       `json:"tags"` - makes query much slower
 }
 
 // https://apidocs.hashnode.com/?source=legacy-api-page#definition-User
 type Author struct {
-	Username string `json:"username"`
+	// Username string `json:"username"`
+	Name string `json:"name"`
 }
 
 // https://apidocs.hashnode.com/?source=legacy-api-page#definition-Content
 type PostContent struct {
-	Markdown string `json:"markdown"`
-	HTML     string `json:"html"`
-	Text     string `json:"text"`
+	// Markdown string `json:"markdown"`
+	// HTML     string `json:"html"`
+	Text string `json:"text"`
 }
 
 // https://apidocs.hashnode.com/?source=legacy-api-page#definition-PageInfo

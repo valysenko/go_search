@@ -3,8 +3,9 @@ package wiki
 import (
 	"context"
 	"fmt"
-	"go_search/internal/wiki/provider"
+	"go_search/internal/provider"
 	wikiCLientPkg "go_search/pkg/wiki"
+	"strconv"
 	"time"
 )
 
@@ -53,6 +54,11 @@ func RunExampleWithTwoQueries() {
 		panic(err)
 	}
 
-	provider := provider.NewWiki(client)
-	err = provider.FetchArticles(context.Background(), articlesFrom, category)
+	pr := NewWiki(client)
+	result, err := pr.FetchArticles(context.Background(), articlesFrom, provider.Query{Category: category})
+	i := 0
+	for _, article := range result {
+		fmt.Println("#" + strconv.Itoa(i) + " - " + article.PublishedAt.GoString() + " - " + article.URL + " - " + article.Author + " - " + article.Title + " - " + fmt.Sprintf("%v", article.Tags))
+		i++
+	}
 }

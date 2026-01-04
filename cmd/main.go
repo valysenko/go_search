@@ -1,14 +1,11 @@
 package main
 
-import "go_search/internal/devto"
-
-//  import "go_search/internal/devto"
-//import "go_search/internal/wiki"
+import "go_search/internal/provider/wiki"
 
 func main() {
-	devto.ExampleProvider()
+	// devto.ExampleProvider()
 	//wiki.RunExampleWithOneQuery()
-	//wiki.RunExampleWithTwoQueries()
+	wiki.RunExampleWithTwoQueries()
 
 	// hashnode.ExampleHashnodeProvider()
 }
