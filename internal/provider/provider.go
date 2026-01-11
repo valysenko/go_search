@@ -4,11 +4,6 @@ import (
 	"time"
 )
 
-// type Provider interface {
-// 	Name() string
-// 	FetchArticles(ctx context.Context, articlesSince time.Time, query Query) (error)
-// }
-
 type Source int
 
 const (

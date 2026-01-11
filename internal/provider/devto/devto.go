@@ -103,7 +103,7 @@ L:
 		}
 	}
 
-	fmt.Println("fetched " + strconv.Itoa(numArticles) + "articles")
+	fmt.Println("fetched " + strconv.Itoa(numArticles) + " devto articles")
 
 	return nil
 }

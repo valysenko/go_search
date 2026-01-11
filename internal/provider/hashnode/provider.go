@@ -83,7 +83,7 @@ L:
 		after = &responseData.Tag.Posts.PageInfo.EndCursor
 	}
 
-	fmt.Println("fetched " + strconv.Itoa(numArticles) + "articles")
+	fmt.Println("fetched " + strconv.Itoa(numArticles) + " hashnode articles")
 
 	return nil
 }

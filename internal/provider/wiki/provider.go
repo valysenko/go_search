@@ -84,6 +84,6 @@ L:
 		request.CmContinue = categoryMemberResponse.Continue.CmContinue
 	}
 
-	fmt.Println("fetched " + strconv.Itoa(numArticles) + "articles")
+	fmt.Println("fetched " + strconv.Itoa(numArticles) + " wiki articles")
 	return nil
 }

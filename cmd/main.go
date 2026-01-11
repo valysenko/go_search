@@ -1,35 +1,38 @@
 package main
 
 import (
+	"context"
 	"go_search/internal/article"
+	"go_search/internal/fetcher"
 	"go_search/internal/provider/devto"
+	"go_search/internal/provider/hashnode"
+	"go_search/internal/provider/wiki"
 	"go_search/pkg/database"
+	devtoClient "go_search/pkg/devto"
+	wikiCLientPkg "go_search/pkg/wiki"
 )
 
 func main() {
+	ctx := context.Background()
 	dbConfig := database.NewDBConfig("go-search-postgres", "5432", "root", "root", "go_search_db", 10, 10, 5)
 	appDb := database.InitDB(dbConfig)
 	appDb.RunMigrations("./migrations")
 	defer appDb.Close()
 
 	articleRepository := article.NewArticleRepository(appDb)
+	devtoProvider := devto.NewDevToProvider(devtoClient.NewDevToClient(10), articleRepository)
+	hashnodeProvider := hashnode.NewHashnode(articleRepository)
+	wikiProvider := wiki.NewWiki(wikiCLientPkg.NewWikiClient(10), articleRepository)
 
-	devto.ExampleProvider(appDb, articleRepository)
-	// wiki.RunExampleWithTwoQueries(articleRepository)
-	// hashnode.ExampleHashnodeProvider(appDb, articleRepository)
+	tagsFromEnv := []string{"golang", "java", "php", "physics", "programming", "ai", "technology"}
+	devtoRunner := devto.NewDevToRunner(devtoProvider, tagsFromEnv)
+	hashnodeRunner := hashnode.NewHashnodeRunner(hashnodeProvider, tagsFromEnv)
+	wikiRunner := wiki.NewWikiRunner(wikiProvider, tagsFromEnv)
 
-	// ctx, _ := context.WithCancel(context.Background())
-	// pool := appDb.Postgresql
-
-	// for i := 0; i < 5; i++ {
-	// 	go func(count int) {
-	// 		_, err := pool.Exec(ctx, ";")
-	// 		if err != nil {
-	// 			fmt.Fprintf(os.Stderr, "Ping failed: %v\n", err)
-	// 			os.Exit(1)
-	// 		}
-	// 		fmt.Println(count, "Query OK!")
-	// 	}(i)
-	// }
-	// select {}
+	f := fetcher.NewFetcher(
+		devtoRunner,
+		hashnodeRunner,
+		wikiRunner,
+	)
+	f.RunSequential(ctx)
 }
