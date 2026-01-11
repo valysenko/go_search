@@ -3,30 +3,29 @@ package devto
 import (
 	"context"
 	"fmt"
+	"go_search/internal/article"
 	"go_search/internal/provider"
+	"go_search/pkg/database"
 	devtoClient "go_search/pkg/devto"
-	"strconv"
 	"time"
 )
 
-func ExampleProvider() {
-	pr := NewDevToProvider(devtoClient.NewDevToClient(10))
+func ExampleProvider(appDB *database.AppDB, repo *article.ArticleRepository) {
+	pr := NewDevToProvider(devtoClient.NewDevToClient(10), repo)
 
 	expectedTags := []string{"go", "golang", "programming", "ai"}
 	query := provider.Query{
 		Tags: expectedTags,
 	}
-	s := "2026-01-03T15:00:00Z"
+	s := "2026-01-10T12:00:00Z"
 	articlesFrom, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		panic(err)
 	}
 
-	result, err := pr.FetchArticles(context.Background(), articlesFrom, query)
-
-	i := 0
-	for _, article := range result {
-		fmt.Println("#" + strconv.Itoa(i) + " - " + article.PublishedAt.GoString() + " - " + article.URL + " - " + article.Author + " - " + article.Title + " - " + fmt.Sprintf("%v", article.Tags))
-		i++
+	err = pr.FetchArticles(context.Background(), articlesFrom, query)
+	if err != nil {
+		fmt.Println("Error fetching articles:", err)
+		return
 	}
 }

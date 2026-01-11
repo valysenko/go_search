@@ -3,12 +3,13 @@ package hashnode
 import (
 	"context"
 	"fmt"
+	"go_search/internal/article"
 	"go_search/internal/provider"
-	"strconv"
+	"go_search/pkg/database"
 	"time"
 )
 
-func ExampleHashnodeProvider() {
+func ExampleHashnodeProvider(appDB *database.AppDB, repo *article.ArticleRepository) {
 	expectedTag := "programming"
 	s := "2026-01-03T00:00:00Z"
 	articlesFrom, err := time.Parse(time.RFC3339, s)
@@ -16,14 +17,12 @@ func ExampleHashnodeProvider() {
 		panic(err)
 	}
 
-	pr := NewHashnode()
-	result, _ := pr.FetchArticles(context.Background(), articlesFrom, provider.Query{
+	pr := NewHashnode(repo)
+	err = pr.FetchArticles(context.Background(), articlesFrom, provider.Query{
 		TagSlug: expectedTag,
 	})
-
-	i := 0
-	for _, article := range result {
-		fmt.Println("#" + strconv.Itoa(i) + " - " + article.PublishedAt.GoString() + " - " + article.URL + " - " + article.Author + " - " + article.Title + " - " + fmt.Sprintf("%v", article.Tags))
-		i++
+	if err != nil {
+		fmt.Println("Error fetching articles:", err)
+		return
 	}
 }

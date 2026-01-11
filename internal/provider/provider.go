@@ -4,22 +4,24 @@ import (
 	"time"
 )
 
-// interface to pass to "fetcher"
 // type Provider interface {
 // 	Name() string
-// 	FetchArticles(ctx context.Context, articlesSince time.Time, query Query) ([]Article, error)
+// 	FetchArticles(ctx context.Context, articlesSince time.Time, query Query) (error)
 // }
 
-type Source string
+type Source int
 
 const (
-	SourceWiki     Source = "wiki"
-	SourceHashnode Source = "hashnode"
-	SourceDevTo    Source = "devto"
+	SourceUnknown Source = iota
+	SourceDevTo
+	SourceHashnode
+	SourceWiki
 )
 
 type Article struct {
-	ID          string
+	UUID        string
+	ExternalID  string
+	CreatedAt   time.Time
 	Title       string
 	URL         string
 	Content     string

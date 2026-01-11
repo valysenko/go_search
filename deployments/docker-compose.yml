@@ -15,6 +15,28 @@ services:
       - "8080:8080"
     networks:
       - go-search-network
+  go-search-postgres:
+    image: postgres:17.2-alpine
+    container_name: go-search-postgres
+    restart: always
+    volumes:
+      - go-search-postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    ports:
+      - 15434:5432
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      SCHEMA: ${POSTGRES_SCHEMA}
+      POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_HOST_AUTH_METHOD}
+    command: ["postgres", "-c", "wal_level=logical"]
+    networks:
+      - go-search-network
+
+volumes:
+  go-search-postgres-data:
+    driver: local
 
 networks:
   go-search-network:

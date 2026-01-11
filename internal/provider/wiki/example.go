@@ -3,9 +3,9 @@ package wiki
 import (
 	"context"
 	"fmt"
+	"go_search/internal/article"
 	"go_search/internal/provider"
 	wikiCLientPkg "go_search/pkg/wiki"
-	"strconv"
 	"time"
 )
 
@@ -45,20 +45,19 @@ L:
 	}
 }
 
-func RunExampleWithTwoQueries() {
+func RunExampleWithTwoQueries(repo *article.ArticleRepository) {
 	client := wikiCLientPkg.NewWikiClient(10)
-	category := "Physics"
+	category := "physics"
 	s := "2025-07-25T00:00:00Z"
 	articlesFrom, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		panic(err)
 	}
 
-	pr := NewWiki(client)
-	result, err := pr.FetchArticles(context.Background(), articlesFrom, provider.Query{Category: category})
-	i := 0
-	for _, article := range result {
-		fmt.Println("#" + strconv.Itoa(i) + " - " + article.PublishedAt.GoString() + " - " + article.URL + " - " + article.Author + " - " + article.Title + " - " + fmt.Sprintf("%v", article.Tags))
-		i++
+	pr := NewWiki(client, repo)
+	err = pr.FetchArticles(context.Background(), articlesFrom, provider.Query{Category: category})
+	if err != nil {
+		fmt.Println("Error fetching articles:", err)
+		return
 	}
 }
