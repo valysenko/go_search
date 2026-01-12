@@ -41,12 +41,15 @@ L:
 
 		categoryMemberResponse, err := d.client.GetCategoryMembers(ctx, request)
 		if err != nil {
-			return err
+			if ctx.Err() != nil {
+				return fmt.Errorf("fetch cancelled: %w", ctx.Err())
+			}
+			fmt.Println("API error:", err)
+			continue
 		}
 
 		for _, item := range categoryMemberResponse.Query.CategoryMembers {
 			if item.Timestamp.Before(articlesSince) {
-				fmt.Println("Reached articles before", item.Timestamp.GoString())
 				break L
 			}
 
@@ -75,6 +78,60 @@ L:
 			}
 
 			numArticles++
+		}
+
+		if categoryMemberResponse.Continue.CmContinue == "" {
+			break L
+		}
+
+		request.CmContinue = categoryMemberResponse.Continue.CmContinue
+	}
+
+	fmt.Println("fetched " + strconv.Itoa(numArticles) + " wiki articles")
+	return nil
+}
+
+func (w *Wiki) FetchArticlesAsync(ctx context.Context, articlesSince time.Time, query provider.Query, articlesChan chan<- *article.Article) error {
+	cmContinue := ""
+	numArticles := 0
+	request := wiki.NewGetCategoryMembersRequest(query.Category, cmContinue)
+
+L:
+	for {
+		categoryMemberResponse, err := w.client.GetCategoryMembers(ctx, request)
+		if err != nil {
+			return err
+		}
+
+		for _, item := range categoryMemberResponse.Query.CategoryMembers {
+			if item.Timestamp.Before(articlesSince) {
+				break L
+			}
+
+			pageId := strconv.Itoa(item.PageID)
+			page, _ := w.client.GetArticleContent(ctx, wiki.NewGetArticleContentRequest(pageId))
+
+			art, err := article.NewArticle(
+				strconv.Itoa(page.GetArticleID(pageId)),
+				page.GetArticleTitle(pageId),
+				page.GetArticleUrl(pageId),
+				page.GetArticleExtract(pageId),
+				AuthorWikiCollaborators,
+				article.SourceWiki,
+				[]string{query.Category},
+				item.Timestamp,
+			)
+			if err != nil {
+				continue
+			}
+
+			// send to articlesChan OR cancel. goroutine should not be blocked if noone reads from articlesChan and can be finished by ctx.Done()
+			select {
+			case articlesChan <- art:
+				numArticles++
+			case <-ctx.Done():
+				return fmt.Errorf("cancelled during wiki articles fetching: %w", ctx.Err())
+			}
 		}
 
 		if categoryMemberResponse.Continue.CmContinue == "" {

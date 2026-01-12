@@ -87,3 +87,60 @@ L:
 
 	return nil
 }
+
+func (hn *Hashnode) FetchArticlesAsync(ctx context.Context, articlesSince time.Time, query provider.Query, articlesChan chan<- *article.Article) error {
+	sortBy := hashnode.SortByRecent
+	first := 10
+	numArticles := 0
+	var after *string
+
+L:
+	for {
+		request := hashnode.NewGetArticlesByTagRequest(query.TagSlug, first, sortBy, after)
+		responseData, err := hn.client.GetPostsByTag(ctx, request)
+		if err != nil {
+			if ctx.Err() != nil {
+				return fmt.Errorf("fetch cancelled: %w", ctx.Err())
+			}
+			fmt.Println("API error:", err)
+			continue
+		}
+
+		for _, edge := range responseData.Tag.Posts.Edges {
+			if edge.Node.PublishedAt.Before(articlesSince) {
+				break L
+			}
+
+			post := edge.Node
+			art, err := article.NewArticle(
+				post.ID,
+				post.Title,
+				post.URL,
+				post.Content.Text,
+				post.Author.Name,
+				article.SourceHashnode,
+				[]string{query.TagSlug},
+				post.PublishedAt,
+			)
+			if err != nil {
+				continue
+			}
+
+			// send to articlesChan OR cancel. goroutine should not be blocked if noone reads from articlesChan and can be finished by ctx.Done()
+			select {
+			case articlesChan <- art:
+				numArticles++
+			case <-ctx.Done():
+				return fmt.Errorf("cancelled during hashnode articles fetching: %w", ctx.Err())
+			}
+		}
+
+		if responseData.Tag.Posts.PageInfo.HasNextPage == false {
+			break L
+		}
+		after = &responseData.Tag.Posts.PageInfo.EndCursor
+	}
+
+	fmt.Println("fetched " + strconv.Itoa(numArticles) + " hashnode articles")
+	return nil
+}

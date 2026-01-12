@@ -10,6 +10,10 @@ import (
 	"go_search/pkg/database"
 	devtoClient "go_search/pkg/devto"
 	wikiCLientPkg "go_search/pkg/wiki"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func main() {
@@ -26,13 +30,28 @@ func main() {
 
 	tagsFromEnv := []string{"golang", "java", "php", "physics", "programming", "ai", "technology"}
 	devtoRunner := devto.NewDevToRunner(devtoProvider, tagsFromEnv)
-	hashnodeRunner := hashnode.NewHashnodeRunner(hashnodeProvider, tagsFromEnv)
-	wikiRunner := wiki.NewWikiRunner(wikiProvider, tagsFromEnv)
+	hashnodeRunner := hashnode.NewHashnodeRunner(hashnodeProvider, tagsFromEnv, 3)
+	wikiRunner := wiki.NewWikiRunner(wikiProvider, tagsFromEnv, 3)
 
 	f := fetcher.NewFetcher(
+		articleRepository,
+		10,
+		3,
 		devtoRunner,
 		hashnodeRunner,
 		wikiRunner,
 	)
-	f.RunSequential(ctx)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		cancel()
+	}()
+
+	// f.RunSequential(ctx)
+	f.RunConcurrently(ctx)
 }

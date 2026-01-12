@@ -107,3 +107,67 @@ L:
 
 	return nil
 }
+
+func (d *DevTo) FetchArticlesAsync(ctx context.Context, articlesSince time.Time, query provider.Query, articlesChan chan<- *article.Article) error {
+	page := 1
+	perPage := 30
+	numArticles := 0
+
+L:
+	for {
+		request := devto.NewGetLatestArticlesRequest(page, perPage)
+		result, err := d.client.GetLatestArticles(ctx, request)
+		if err != nil {
+			if ctx.Err() != nil {
+				return fmt.Errorf("fetch cancelled: %w", ctx.Err())
+			}
+			fmt.Println("API error:", err)
+			continue
+		}
+
+		for _, articleSummary := range result {
+			if articlesSince.After(articleSummary.PublishedAt) {
+				break L
+			}
+
+			if helpers.HasAny(articleSummary.TagList, query.Tags) {
+				request := devto.NewGetArticlesByIdRequest(articleSummary.ID)
+				sourceArticle, err := d.client.GetArticleById(ctx, request)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+
+				art, err := article.NewArticle(
+					strconv.Itoa(sourceArticle.ID),
+					sourceArticle.Title,
+					sourceArticle.Url,
+					sourceArticle.BodyMarkdown,
+					sourceArticle.User.Name,
+					article.SourceDevTo,
+					sourceArticle.TagList,
+					sourceArticle.PublishedAt,
+				)
+				if err != nil {
+					continue
+				}
+
+				// send to articlesChan OR cancel. goroutine should not be blocked if noone reads from articlesChan and can be finished by ctx.Done()
+				select {
+				case articlesChan <- art:
+					numArticles++
+				case <-ctx.Done():
+					return fmt.Errorf("cancelled during devto articles fetching: %w", ctx.Err())
+				}
+			}
+		}
+
+		page++
+		if len(result) < perPage {
+			break
+		}
+	}
+
+	fmt.Println("fetched " + strconv.Itoa(numArticles) + " devto articles")
+	return nil
+}
