@@ -2,6 +2,7 @@ package wiki
 
 import (
 	"context"
+	"fmt"
 	"go_search/pkg/httpclient"
 )
 
@@ -30,15 +31,15 @@ func NewWikiClient(timeoutSeconds int) *WikiClient {
 // https://www.mediawiki.org/wiki/API:Continue
 func (wc *WikiClient) GetCategoryMembers(ctx context.Context, request *GetCategoryMembersRequest) (*CategoryMembersResponse, error) {
 	params := request.UrlValues()
-	url := "?" + params.Encode()
+	path := "?" + params.Encode()
 	headers := httpclient.Headers{
 		userAgentHeader: userAgent,
 	}
 
 	var result CategoryMembersResponse
-	err := wc.client.Get(ctx, url, headers, &result)
+	err := wc.client.Get(ctx, path, headers, &result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get category members from %d: %w", request.CmContinue, err)
 	}
 
 	return &result, nil
@@ -49,15 +50,15 @@ func (wc *WikiClient) GetCategoryMembers(ctx context.Context, request *GetCatego
 // https://www.mediawiki.org/wiki/Extension:TextExtracts#API
 func (wc *WikiClient) GetArticleContent(ctx context.Context, request *GetArticleContentRequest) (*ArticleResponse, error) {
 	params := request.UrlValues()
-	url := "?" + params.Encode()
+	path := "?" + params.Encode()
 	headers := httpclient.Headers{
 		userAgentHeader: userAgent,
 	}
 
 	var result ArticleResponse
-	err := wc.client.Get(ctx, url, headers, &result)
+	err := wc.client.Get(ctx, path, headers, &result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get article content %s: %w", request.PageIds, err)
 	}
 
 	return &result, nil
@@ -82,7 +83,7 @@ func (wc *WikiClient) GetAllCategoryMembersWithPageContent(ctx context.Context, 
 	var result CategoryMembersWithExtractResponse
 	err := wc.client.Get(ctx, url, headers, &result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get category members from %d: %w", request.GcmContinue, err)
 	}
 
 	return &result, nil

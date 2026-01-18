@@ -2,9 +2,11 @@ package wiki
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go_search/internal/article"
 	"go_search/internal/provider"
+	"log"
 	"sync"
 	"time"
 
@@ -31,20 +33,22 @@ func NewWikiRunner(wiki WikiProvider, tags []string, maxConcurrentTags int64) *W
 }
 
 func (wr *WikiRunner) Run(ctx context.Context, articlesFrom time.Time) error {
+	var errrs []error
+
 	for _, tag := range wr.tags {
 		err := wr.wiki.FetchArticles(ctx, articlesFrom, provider.Query{
 			Category: tag,
 		})
 		if err != nil {
-			fmt.Println("error fetching articles for category", tag, ":", err)
-			return err
+			errrs = append(errrs, fmt.Errorf("wiki: category %q failed: %w", tag, err))
 		}
 	}
 
-	return nil
+	return errors.Join(errrs...)
 }
 
 func (wr *WikiRunner) RunConcurrently(ctx context.Context, articlesFrom time.Time, articlesChan chan<- *article.Article, errChan chan<- error) {
+	log.Println("[info] wiki runner: started")
 	var wg sync.WaitGroup
 	sem := semaphore.NewWeighted(wr.maxConcurrentTags)
 
@@ -54,22 +58,33 @@ func (wr *WikiRunner) RunConcurrently(ctx context.Context, articlesFrom time.Tim
 
 		go func() {
 			defer wg.Done()
-
 			if err := sem.Acquire(ctx, 1); err != nil {
-				errChan <- fmt.Errorf("wiki semaphore acquire failed for category %s: %w", category, err)
+				// prevent deadlock in case errChan is blocked forever
+				select {
+				case errChan <- fmt.Errorf("wiki semaphore acquire failed for category %s: %w", category, err):
+				case <-ctx.Done():
+					return
+				}
 				return
 			}
 			defer sem.Release(1)
 
+			log.Printf("[info] wiki: fetching category '%s'", category)
+
 			query := provider.Query{Category: category}
 			if err := wr.wiki.FetchArticlesAsync(ctx, articlesFrom, query, articlesChan); err != nil {
-				errChan <- fmt.Errorf("wiki category %s: %w", category, err)
-			} else {
-				fmt.Printf("wiki category '%s' completed\n", category)
+				// prevent deadlock in case errChan is blocked forever
+				select {
+				case errChan <- fmt.Errorf("wiki category %s: %w", category, err):
+				case <-ctx.Done():
+					return
+				}
+				return
 			}
+			log.Printf("[info] wiki: category '%s' completed", category)
 		}()
 	}
 
 	wg.Wait()
-	fmt.Println("wiki completed")
+	log.Println("[info] wiki runner: completed successfully")
 }

@@ -2,11 +2,13 @@ package devto
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go_search/helpers"
 	"go_search/internal/article"
 	"go_search/internal/provider"
 	"go_search/pkg/devto"
+	"log"
 	"strconv"
 
 	"time"
@@ -43,9 +45,15 @@ L:
 		request := devto.NewGetLatestArticlesRequest(page, perPage)
 
 		result, err := d.client.GetLatestArticles(ctx, request)
+		// fmt.Println(result)
+		// panic(err)
+
 		if err != nil {
-			// todo: log error
-			fmt.Println(err)
+			if ctx.Err() != nil {
+				return fmt.Errorf("fetch cancelled at page %d: %w", page, ctx.Err())
+			}
+			log.Printf("[warn] devto: page %d failed, continuing: %v", page, err)
+			page++
 			continue
 		}
 
@@ -62,8 +70,7 @@ L:
 				request := devto.NewGetArticlesByIdRequest(articleSummary.ID)
 				sourceArticle, err := d.client.GetArticleById(ctx, request)
 				if err != nil {
-					// todo: log error
-					fmt.Println(err)
+					log.Printf("[warn] devto: failed to get article with ID %d: %v", request.ID, err)
 					continue
 				}
 
@@ -78,6 +85,7 @@ L:
 					sourceArticle.PublishedAt,
 				)
 				if err != nil {
+					log.Printf("[warn] devto: failed to create article from %d: %v", sourceArticle.ID, err)
 					continue
 				}
 
@@ -103,8 +111,6 @@ L:
 		}
 	}
 
-	fmt.Println("fetched " + strconv.Itoa(numArticles) + " devto articles")
-
 	return nil
 }
 
@@ -118,10 +124,11 @@ L:
 		request := devto.NewGetLatestArticlesRequest(page, perPage)
 		result, err := d.client.GetLatestArticles(ctx, request)
 		if err != nil {
-			if ctx.Err() != nil {
-				return fmt.Errorf("fetch cancelled: %w", ctx.Err())
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return fmt.Errorf("[warn] devto: cancelled at page %d: %w", page, err)
 			}
-			fmt.Println("API error:", err)
+			log.Printf("[warn] devto: page %d failed, continuing: %v", page, err)
+			page++
 			continue
 		}
 
@@ -134,7 +141,7 @@ L:
 				request := devto.NewGetArticlesByIdRequest(articleSummary.ID)
 				sourceArticle, err := d.client.GetArticleById(ctx, request)
 				if err != nil {
-					fmt.Println(err)
+					log.Printf("[warn] devto: failed to get article with ID %d: %v", request.ID, err)
 					continue
 				}
 
@@ -149,6 +156,7 @@ L:
 					sourceArticle.PublishedAt,
 				)
 				if err != nil {
+					log.Printf("[warn] devto: failed to create article from %d: %v", sourceArticle.ID, err)
 					continue
 				}
 
@@ -168,6 +176,6 @@ L:
 		}
 	}
 
-	fmt.Println("fetched " + strconv.Itoa(numArticles) + " devto articles")
+	log.Println("devto: fetched " + strconv.Itoa(numArticles) + " articles")
 	return nil
 }

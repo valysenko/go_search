@@ -2,6 +2,7 @@ package hashnode
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/machinebox/graphql"
 )
@@ -66,7 +67,7 @@ func (hc *HashnodeClient) GetPostsByTag(ctx context.Context, request *PostsByTag
 
 	var resp PostsByTagResponse
 	if err := hc.client.Run(ctx, req, &resp); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch posts for tag %q: %w", request.TagSlug, err)
 	}
 
 	return &resp, nil

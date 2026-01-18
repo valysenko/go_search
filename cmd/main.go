@@ -10,6 +10,7 @@ import (
 	"go_search/pkg/database"
 	devtoClient "go_search/pkg/devto"
 	wikiCLientPkg "go_search/pkg/wiki"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -52,6 +53,16 @@ func main() {
 		cancel()
 	}()
 
-	// f.RunSequential(ctx)
-	f.RunConcurrently(ctx)
+	// result, err := f.RunSequential(ctx)
+	result, err := f.RunConcurrently(ctx)
+	if err != nil {
+		log.Fatalf("[fatal] Fetcher could not start: %v", err)
+	}
+	log.Printf("[info] Fetch completed in %v", result.Duration)
+	if len(result.Errors) > 0 {
+		log.Printf("[warn] %d runner errors occurred during execution:", len(result.Errors))
+		for _, runnerErr := range result.Errors {
+			log.Printf("  - %v", runnerErr)
+		}
+	}
 }

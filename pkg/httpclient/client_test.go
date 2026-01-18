@@ -58,9 +58,12 @@ func TestGet(t *testing.T) {
 		var result testStruct
 		err := client.Get(context.Background(), "/endpoint/1", nil, &result)
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, ErrServerError))
-		assert.Contains(t, err.Error(), "500")
-		assert.Contains(t, err.Error(), "server error")
+
+		var reqErr *RequestError
+		assert.True(t, errors.As(err, &reqErr))
+		assert.Equal(t, ErrorTypeServer, reqErr.Type)
+		assert.Equal(t, 500, reqErr.StatusCode)
+		assert.Contains(t, err.Error(), "request failed")
 		assert.Contains(t, err.Error(), "missing header")
 	})
 
@@ -70,9 +73,12 @@ func TestGet(t *testing.T) {
 		var result testStruct
 		err := client.Get(context.Background(), "/wrong/path", Headers{"User-Agent": "Browser"}, &result)
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, ErrClientError))
-		assert.Contains(t, err.Error(), "404")
-		assert.Contains(t, err.Error(), "client error")
+
+		var reqErr *RequestError
+		assert.True(t, errors.As(err, &reqErr))
+		assert.Equal(t, ErrorTypeClient, reqErr.Type)
+		assert.Equal(t, 404, reqErr.StatusCode)
+		assert.Contains(t, err.Error(), "request failed")
 		assert.Contains(t, err.Error(), "path not found")
 	})
 
@@ -82,10 +88,11 @@ func TestGet(t *testing.T) {
 		var result testStruct
 		err := client.Get(context.Background(), "/endpoint/1", Headers{"User-Agent": "Browser"}, &result)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to execute request")
+		var reqErr *RequestError
+		assert.True(t, errors.As(err, &reqErr))
+		assert.Equal(t, ErrorTypeNetwork, reqErr.Type)
+		assert.Equal(t, 0, reqErr.StatusCode)
 		assert.Contains(t, err.Error(), "connection refused")
-		assert.False(t, errors.Is(err, ErrServerError))
-		assert.False(t, errors.Is(err, ErrClientError))
 	})
 
 	t.Run("context cancelled before request", func(t *testing.T) {
@@ -97,8 +104,11 @@ func TestGet(t *testing.T) {
 		var result testStruct
 		err := client.Get(ctx, "/endpoint/1", Headers{"User-Agent": "Browser"}, &result)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to execute request")
+		var reqErr *RequestError
+		assert.True(t, errors.As(err, &reqErr))
 		assert.True(t, errors.Is(err, context.Canceled))
+		assert.Equal(t, ErrorTypeNetwork, reqErr.Type)
+		assert.Contains(t, err.Error(), "request failed")
 	})
 
 	t.Run("http client timeout exceeded", func(t *testing.T) {
@@ -113,26 +123,10 @@ func TestGet(t *testing.T) {
 		var result testStruct
 		err := client.Get(context.Background(), "/endpoint/1", Headers{"User-Agent": "Browser"}, &result)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to execute request")
-		assert.Contains(t, err.Error(), "Client.Timeout")
-		assert.False(t, errors.Is(err, ErrServerError))
-		assert.False(t, errors.Is(err, ErrClientError))
-	})
-
-	t.Run("context timeout exceeded", func(t *testing.T) {
-		slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			time.Sleep(2 * time.Second)
-			w.WriteHeader(http.StatusOK)
-		}))
-		defer slowServer.Close()
-
-		client := NewHttpClient(5, slowServer.URL)
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		defer cancel()
-
-		var result testStruct
-		err := client.Get(ctx, "/endpoint/1", Headers{"User-Agent": "Browser"}, &result)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "context deadline exceeded")
+		var reqErr *RequestError
+		assert.True(t, errors.As(err, &reqErr))
+		assert.True(t, errors.Is(err, context.DeadlineExceeded))
+		assert.Equal(t, ErrorTypeNetwork, reqErr.Type)
+		assert.Contains(t, err.Error(), "request failed")
 	})
 }

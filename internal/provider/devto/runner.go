@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go_search/internal/article"
 	"go_search/internal/provider"
+	"log"
 	"time"
 )
 
@@ -30,19 +31,20 @@ func (dr *DevToRunner) Run(ctx context.Context, articlesFrom time.Time) error {
 
 	err := dr.devto.FetchArticles(ctx, articlesFrom, query)
 	if err != nil {
-		fmt.Println("Error fetching articles:", err)
-		return err
+		return fmt.Errorf("devto runner failed: %w", err)
 	}
 
 	return nil
 }
 
 func (dr *DevToRunner) RunConcurrently(ctx context.Context, articlesFrom time.Time, articlesChan chan<- *article.Article, errChan chan<- error) {
+	log.Println("[info] devto runner: started")
 	query := provider.Query{Tags: dr.tags}
 
 	if err := dr.devto.FetchArticlesAsync(ctx, articlesFrom, query, articlesChan); err != nil {
-		errChan <- fmt.Errorf("devTo: %w", err)
+		errChan <- fmt.Errorf("devto runner failed: %w", err)
+		return
 	}
 
-	fmt.Println("devTo completed")
+	log.Println("[info] devto runner: completed successfully")
 }

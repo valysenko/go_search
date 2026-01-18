@@ -7,14 +7,55 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
-var (
-	ErrClientError      = errors.New("client error")
-	ErrServerError      = errors.New("server error")
-	ErrUnexpectedStatus = errors.New("unexpected status code")
+type ErrorType int
+
+func (t ErrorType) String() string {
+	return [...]string{"Unknown", "Client", "Server", "Network", "WrongData"}[t]
+}
+
+const (
+	ErrorTypeUnknown   ErrorType = iota
+	ErrorTypeClient              // 4xx
+	ErrorTypeServer              // 5xx
+	ErrorTypeNetwork             // dns, timeouts
+	ErrorTypeWrongData           // json decoding errors
 )
+
+type RequestError struct {
+	Type            ErrorType
+	Message         string
+	StatusCode      int
+	Url             string
+	Err             error
+	RawResponseBody []byte
+}
+
+func (e *RequestError) Error() string {
+	msg := fmt.Sprintf("request failed: %s (type=%s, status=%d)",
+		e.Url, e.Type.String(), e.StatusCode,
+	)
+	if e.Err != nil {
+		msg += fmt.Sprintf(", cause: %v", e.Err)
+	}
+
+	if len(e.RawResponseBody) > 0 {
+		snippet := string(e.RawResponseBody)
+		if len(snippet) > 100 {
+			snippet = snippet[:100] + "..."
+		}
+		msg += fmt.Sprintf(", body: [%s]", snippet)
+	}
+
+	return msg
+}
+
+func (e *RequestError) Unwrap() error {
+	return e.Err
+}
 
 type Headers map[string]string
 
@@ -37,14 +78,22 @@ func NewHttpClient(timeoutSeconds int, baseUrl string) *HttpClient {
 }
 
 func (c *HttpClient) Get(ctx context.Context, path string, headers Headers, out any) error {
+	rawPath, query, _ := strings.Cut(path, "?")
+	baseUrl := strings.TrimSuffix(c.baseUrl, "/")
+	cleanPath := strings.TrimPrefix(rawPath, "/")
+	fullUrl := baseUrl + "/" + cleanPath
+	if query != "" {
+		fullUrl += "?" + query
+	}
+
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		c.baseUrl+path,
+		fullUrl,
 		nil,
 	)
 	if err != nil {
-		return err
+		return &RequestError{Type: ErrorTypeUnknown, Message: "failed to create request", Url: fullUrl, Err: err}
 	}
 
 	for k, v := range headers {
@@ -53,44 +102,66 @@ func (c *HttpClient) Get(ctx context.Context, path string, headers Headers, out 
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to execute request: %w", err)
+		errType := ErrorTypeNetwork
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return &RequestError{
+				Type:    errType,
+				Message: "request timed out or cancelled",
+				Url:     fullUrl,
+				Err:     err,
+			}
+		}
+		return &RequestError{
+			Type:    errType,
+			Message: "transport level error",
+			Url:     fullUrl,
+			Err:     err,
+		}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return c.handleErrorStatus(resp, path)
+		return c.handleErrorStatus(resp, fullUrl)
 	}
 
-	return json.NewDecoder(resp.Body).Decode(out)
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return &RequestError{Type: ErrorTypeWrongData, Message: "json decode fail", Url: fullUrl, StatusCode: resp.StatusCode, Err: err}
+	}
+
+	return nil
 }
 
-func (c *HttpClient) handleErrorStatus(resp *http.Response, path string) error {
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read error response body for %s: %w", path, err)
-	}
-
-	var errResp struct {
-		Message string `json:"message"`
-	}
-	var errMsg string
-	if json.Unmarshal(body, &errResp) == nil && errResp.Message != "" {
-		errMsg = errResp.Message
-	}
-
+func (c *HttpClient) handleErrorStatus(resp *http.Response, fullUrl string) error {
+	errType := ErrorTypeUnknown
+	message := "unknown error"
 	switch {
 	case resp.StatusCode >= 400 && resp.StatusCode < 500:
-		if errMsg != "" {
-			return fmt.Errorf("client error %d for %s (%s): %w", resp.StatusCode, path, errMsg, ErrClientError)
-		}
-		return fmt.Errorf("client error %d for %s: %w", resp.StatusCode, path, ErrClientError)
+		errType = ErrorTypeClient
+		message = "client error"
 	case resp.StatusCode >= 500:
-		if errMsg != "" {
-			return fmt.Errorf("server error %d for %s (%s): %w", resp.StatusCode, path, errMsg, ErrServerError)
+		errType = ErrorTypeServer
+		message = "server error"
+	}
+
+	// prevent OOM in case body is huge
+	limitReader := io.LimitReader(resp.Body, 4096)
+	body, err := io.ReadAll(limitReader)
+	if err != nil {
+		return &RequestError{
+			Type:       ErrorTypeWrongData, // Or ErrorTypeNetwork depending on preference
+			Message:    "failed to read error response body",
+			StatusCode: resp.StatusCode,
+			Url:        fullUrl,
+			Err:        err, // The underlying read error (e.g. connection reset)
 		}
-		return fmt.Errorf("server error %d for %s: %w", resp.StatusCode, path, ErrServerError)
-	default:
-		return fmt.Errorf("unexpected status code %d for %s: %w", resp.StatusCode, path, ErrUnexpectedStatus)
+	}
+
+	return &RequestError{
+		Type:            errType,
+		Message:         message,
+		StatusCode:      resp.StatusCode,
+		Url:             fullUrl,
+		RawResponseBody: body,
 	}
 }
 
