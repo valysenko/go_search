@@ -8,6 +8,7 @@ import (
 	"go_search/internal/article"
 	"go_search/internal/provider"
 	"go_search/pkg/devto"
+	"go_search/pkg/httpclient"
 	"log"
 	"strconv"
 
@@ -20,12 +21,17 @@ type ArticleRepository interface {
 	UpsertArticlesUnnestWithoutTags(ctx context.Context, articles []*article.Article) error
 }
 
+type Client interface {
+	GetLatestArticles(ctx context.Context, request *devto.GetLatestArticlesRequest) ([]devto.ArticleSummary, error)
+	GetArticleById(ctx context.Context, request *devto.GetArticlesByIdRequest) (*devto.Article, error)
+}
+
 type DevTo struct {
-	client *devto.DevToClient
+	client Client
 	repo   ArticleRepository
 }
 
-func NewDevToProvider(client *devto.DevToClient, repo ArticleRepository) *DevTo {
+func NewDevToProvider(client Client, repo ArticleRepository) *DevTo {
 	return &DevTo{
 		client: client,
 		repo:   repo,
@@ -43,15 +49,19 @@ func (d *DevTo) FetchArticles(ctx context.Context, articlesSince time.Time, quer
 L:
 	for {
 		request := devto.NewGetLatestArticlesRequest(page, perPage)
-
 		result, err := d.client.GetLatestArticles(ctx, request)
-		// fmt.Println(result)
-		// panic(err)
 
 		if err != nil {
-			if ctx.Err() != nil {
-				return fmt.Errorf("fetch cancelled at page %d: %w", page, ctx.Err())
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return fmt.Errorf("devto: cancelled at page %d: %w", page, err)
 			}
+
+			// 4xx is allowed
+			var clientErr *httpclient.RequestError
+			if errors.As(err, &clientErr) && clientErr.Type == httpclient.ErrorTypeServer {
+				return fmt.Errorf("devto: server error at page %d: %w", page, err)
+			}
+
 			log.Printf("[warn] devto: page %d failed, continuing: %v", page, err)
 			page++
 			continue
@@ -70,6 +80,9 @@ L:
 				request := devto.NewGetArticlesByIdRequest(articleSummary.ID)
 				sourceArticle, err := d.client.GetArticleById(ctx, request)
 				if err != nil {
+					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+						return fmt.Errorf("devto: cancelled at page %d: %w", page, err)
+					}
 					log.Printf("[warn] devto: failed to get article with ID %d: %v", request.ID, err)
 					continue
 				}
@@ -91,19 +104,14 @@ L:
 
 				articles = append(articles, article)
 
-				// Temporary solution for testing. Bad performance
-				// err = d.repo.UpsertArticle(ctx, article)
-				// if err != nil {
-				// 	fmt.Println(err)
-				// 	continue
-				// }
-
 				i++
 				numArticles++
 			}
 		}
 
-		err = d.repo.UpsertArticlesUnnestWithoutTags(ctx, articles)
+		if len(articles) > 0 {
+			err = d.repo.UpsertArticlesUnnestWithoutTags(ctx, articles)
+		}
 
 		page++
 		if len(result) < perPage {
@@ -125,8 +133,15 @@ L:
 		result, err := d.client.GetLatestArticles(ctx, request)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return fmt.Errorf("[warn] devto: cancelled at page %d: %w", page, err)
+				return fmt.Errorf("devto: cancelled at page %d: %w", page, err)
 			}
+
+			// 4xx is allowed
+			var clientErr *httpclient.RequestError
+			if errors.As(err, &clientErr) && clientErr.Type == httpclient.ErrorTypeServer {
+				return fmt.Errorf("devto: server error at page %d: %w", page, err)
+			}
+
 			log.Printf("[warn] devto: page %d failed, continuing: %v", page, err)
 			page++
 			continue
@@ -141,6 +156,9 @@ L:
 				request := devto.NewGetArticlesByIdRequest(articleSummary.ID)
 				sourceArticle, err := d.client.GetArticleById(ctx, request)
 				if err != nil {
+					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+						return fmt.Errorf("devto: cancelled at page %d: %w", page, err)
+					}
 					log.Printf("[warn] devto: failed to get article with ID %d: %v", request.ID, err)
 					continue
 				}

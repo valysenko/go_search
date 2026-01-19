@@ -21,12 +21,17 @@ type ArticleRepository interface {
 	UpsertArticle(ctx context.Context, article *article.Article) error
 }
 
+type WikiClient interface {
+	GetCategoryMembers(ctx context.Context, request *wiki.GetCategoryMembersRequest) (*wiki.CategoryMembersResponse, error)
+	GetArticleContent(ctx context.Context, request *wiki.GetArticleContentRequest) (*wiki.ArticleResponse, error)
+}
+
 type Wiki struct {
-	client *wiki.WikiClient
+	client WikiClient
 	repo   ArticleRepository
 }
 
-func NewWiki(client *wiki.WikiClient, repo ArticleRepository) *Wiki {
+func NewWiki(client WikiClient, repo ArticleRepository) *Wiki {
 	return &Wiki{
 		client: client,
 		repo:   repo,
@@ -61,7 +66,7 @@ L:
 			page, err := w.client.GetArticleContent(ctx, wiki.NewGetArticleContentRequest(pageId))
 			if err != nil {
 				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					return err
+					return fmt.Errorf("wiki: article fetch cancelled for category '%s': %w", query.Category, err)
 				}
 
 				var reqErr *httpclient.RequestError

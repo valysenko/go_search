@@ -17,8 +17,12 @@ type ArticleRepository interface {
 	UpsertArticle(ctx context.Context, article *article.Article) error
 }
 
+type HashnodeClient interface {
+	GetPostsByTag(ctx context.Context, request *hashnode.PostsByTagRequest) (*hashnode.PostsByTagResponse, error)
+}
+
 type Hashnode struct {
-	client *hashnode.HashnodeClient
+	client HashnodeClient
 	repo   ArticleRepository
 }
 
