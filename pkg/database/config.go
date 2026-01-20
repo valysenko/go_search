@@ -6,14 +6,14 @@ import (
 )
 
 type DBConfig struct {
-	Host           string `env:"DB_HOST"`
-	Port           string `env:"DB_PORT"`
-	Username       string `env:"DB_USERNAME" `
-	Password       string `env:"DB_PASSWORD"`
-	DbName         string `env:"DB_NAME"`
-	MaxConns       int32  `env:"DB_MAX_CONNS"`
-	MinConns       int32  `env:"DB_MIN_CONNS"`
-	ConnectTimeout int    `env:"DB_CONNECT_TIMEOUT"`
+	Host           string
+	Port           string
+	Username       string
+	Password       string
+	DbName         string
+	MaxConns       int32
+	MinConns       int32
+	ConnectTimeout int
 }
 
 func NewDBConfig(

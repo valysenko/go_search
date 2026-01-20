@@ -13,6 +13,8 @@ services:
       - ../:/src
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     networks:
       - go-search-network
   go-search-postgres:
@@ -25,10 +27,10 @@ services:
     ports:
       - 15434:5432
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_USER: ${POSTGRES_USER}
-      SCHEMA: ${POSTGRES_SCHEMA}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      SCHEMA: ${DB_SCHEMA}
       POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_HOST_AUTH_METHOD}
     command: ["postgres", "-c", "wal_level=logical"]
     networks:

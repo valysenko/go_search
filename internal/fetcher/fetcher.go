@@ -45,7 +45,7 @@ func (f *Fetcher) RunSequential(ctx context.Context) (*FetcherResult, error) {
 	startTime := time.Now()
 
 	// temp. need to store date in redis for fetcher or per provider
-	s := "2026-01-19T18:00:00Z"
+	s := "2026-01-20T16:00:00Z"
 	articlesFrom, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse date: %w", err)
@@ -78,7 +78,7 @@ func (f *Fetcher) RunConcurrently(ctx context.Context) (*FetcherResult, error) {
 	startTime := time.Now()
 
 	// temp. need to store date in redis for fetcher or per provider
-	s := "2026-01-19T18:00:00Z"
+	s := "2026-01-20T16:00:00Z"
 	articlesFrom, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse date: %w", err)
