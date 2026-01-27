@@ -9,13 +9,15 @@ import (
 	"go_search/internal/provider/wiki"
 	"go_search/pkg/database"
 	"go_search/pkg/redis"
-	"log"
+	"log/slog"
+	"os"
 )
 
 type FetcherApp struct {
-	db    *database.AppDB
-	redis *redis.AppRedis
-	cfg   *config.AppConfig
+	db     *database.AppDB
+	redis  *redis.AppRedis
+	cfg    *config.AppConfig
+	logger *slog.Logger
 }
 
 func NewFetcherApp(cfg *config.AppConfig) *FetcherApp {
@@ -37,22 +39,30 @@ func NewFetcherApp(cfg *config.AppConfig) *FetcherApp {
 		RedisDB:       cfg.RedisConfig.RedisDB,
 	})
 
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	handler := slog.NewJSONHandler(os.Stderr, opts)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
 	return &FetcherApp{
-		db:    appDb,
-		redis: appRedis,
-		cfg:   cfg,
+		db:     appDb,
+		redis:  appRedis,
+		cfg:    cfg,
+		logger: logger,
 	}
 }
 
 func (fa *FetcherApp) Run(ctx context.Context) {
 	articleRepository := article.NewArticleRepository(fa.db)
-	devtoProvider := NewDevtoProvider(articleRepository, fa.cfg.ProvidersConfig.DevClientTimeoutSeconds)
-	hashnodeProvider := NewHashnodeProvider(articleRepository, fa.cfg.ProvidersConfig.HashnodeClientTimeoutSeconds)
-	wikiProvider := NewWikiProvider(articleRepository, fa.cfg.ProvidersConfig.WikiClientTimeoutSeconds)
+	devtoProvider := NewDevtoProvider(articleRepository, fa.logger, fa.cfg.ProvidersConfig.DevClientTimeoutSeconds)
+	hashnodeProvider := NewHashnodeProvider(articleRepository, fa.logger, fa.cfg.ProvidersConfig.HashnodeClientTimeoutSeconds)
+	wikiProvider := NewWikiProvider(articleRepository, fa.logger, fa.cfg.ProvidersConfig.WikiClientTimeoutSeconds)
 
-	devtoRunner := devto.NewDevToRunner(devtoProvider, fa.cfg.ProvidersConfig.DevToTags)
-	hashnodeRunner := hashnode.NewHashnodeRunner(hashnodeProvider, fa.cfg.ProvidersConfig.HashnodeTags, fa.cfg.ProvidersConfig.HashnodeMaxConcurrency)
-	wikiRunner := wiki.NewWikiRunner(wikiProvider, fa.cfg.ProvidersConfig.WikiCategories, fa.cfg.ProvidersConfig.WikiMaxConcurrency)
+	devtoRunner := devto.NewDevToRunner(devtoProvider, fa.logger, fa.cfg.ProvidersConfig.DevToTags)
+	hashnodeRunner := hashnode.NewHashnodeRunner(hashnodeProvider, fa.logger, fa.cfg.ProvidersConfig.HashnodeTags, fa.cfg.ProvidersConfig.HashnodeMaxConcurrency)
+	wikiRunner := wiki.NewWikiRunner(wikiProvider, fa.logger, fa.cfg.ProvidersConfig.WikiCategories, fa.cfg.ProvidersConfig.WikiMaxConcurrency)
 
 	fetcherRepository := NewFetcherStorage(fa.redis)
 	fetcher := NewFetcher(
@@ -65,17 +75,24 @@ func (fa *FetcherApp) Run(ctx context.Context) {
 		wikiRunner,
 	)
 
-	result, err := fetcher.RunSequential(ctx)
-	// result, err := fetcher.RunConcurrently(ctx)
+	// result, err := fetcher.RunSequential(ctx)
+	result, err := fetcher.RunConcurrently(ctx)
 
 	if err != nil {
-		log.Fatalf("[fatal] Fetcher could not start: %v", err)
+		fa.logger.Error("fetcher could not start",
+			"error", err,
+		)
+		os.Exit(1)
 	}
-	log.Printf("[info] Fetch completed in %v", result.Duration)
+
+	fa.logger.Info("fetch completed", "duration", result.Duration)
+
 	if len(result.Errors) > 0 {
-		log.Printf("[warn] %d runner errors occurred during execution:", len(result.Errors))
+		fa.logger.Warn("runner errors occurred during execution",
+			"error_count", len(result.Errors),
+		)
 		for _, runnerErr := range result.Errors {
-			log.Printf("  - %v", runnerErr)
+			fa.logger.Warn("runner error", "err", runnerErr)
 		}
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"go_search/internal/provider"
 	"go_search/pkg/devto"
 	"go_search/pkg/httpclient"
-	"log"
+	"log/slog"
 	"strconv"
 
 	"time"
@@ -29,12 +29,14 @@ type Client interface {
 type DevTo struct {
 	client Client
 	repo   ArticleRepository
+	logger *slog.Logger
 }
 
-func NewDevToProvider(client Client, repo ArticleRepository) *DevTo {
+func NewDevToProvider(client Client, repo ArticleRepository, logger *slog.Logger) *DevTo {
 	return &DevTo{
 		client: client,
 		repo:   repo,
+		logger: logger,
 	}
 }
 
@@ -62,7 +64,11 @@ L:
 				return fmt.Errorf("devto: server error at page %d: %w", page, err)
 			}
 
-			log.Printf("[warn] devto: page %d failed, continuing: %v", page, err)
+			d.logger.Warn("page failed, continuing",
+				"page", page,
+				"error", err,
+			)
+
 			page++
 			continue
 		}
@@ -83,7 +89,10 @@ L:
 					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 						return fmt.Errorf("devto: cancelled at page %d: %w", page, err)
 					}
-					log.Printf("[warn] devto: failed to get article with ID %d: %v", request.ID, err)
+					d.logger.Warn("failed to get article",
+						"ID", request.ID,
+						"error", err,
+					)
 					continue
 				}
 
@@ -98,7 +107,10 @@ L:
 					sourceArticle.PublishedAt,
 				)
 				if err != nil {
-					log.Printf("[warn] devto: failed to create article from %d: %v", sourceArticle.ID, err)
+					d.logger.Warn("failed to create article",
+						"ID", request.ID,
+						"error", err,
+					)
 					continue
 				}
 
@@ -142,7 +154,10 @@ L:
 				return fmt.Errorf("devto: server error at page %d: %w", page, err)
 			}
 
-			log.Printf("[warn] devto: page %d failed, continuing: %v", page, err)
+			d.logger.Warn("page failed, continuing",
+				"page", page,
+				"error", err,
+			)
 			page++
 			continue
 		}
@@ -159,7 +174,10 @@ L:
 					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 						return fmt.Errorf("devto: cancelled at page %d: %w", page, err)
 					}
-					log.Printf("[warn] devto: failed to get article with ID %d: %v", request.ID, err)
+					d.logger.Warn("failed to get article",
+						"ID", request.ID,
+						"error", err,
+					)
 					continue
 				}
 
@@ -174,7 +192,10 @@ L:
 					sourceArticle.PublishedAt,
 				)
 				if err != nil {
-					log.Printf("[warn] devto: failed to create article from %d: %v", sourceArticle.ID, err)
+					d.logger.Warn("failed to create article",
+						"ID", request.ID,
+						"error", err,
+					)
 					continue
 				}
 
@@ -194,6 +215,8 @@ L:
 		}
 	}
 
-	log.Println("devto: fetched " + strconv.Itoa(numArticles) + " articles")
+	d.logger.Info("fetched articles",
+		"count", numArticles,
+	)
 	return nil
 }

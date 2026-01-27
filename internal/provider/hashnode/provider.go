@@ -7,7 +7,7 @@ import (
 	"go_search/internal/article"
 	"go_search/internal/provider"
 	"go_search/pkg/hashnode"
-	"log"
+	"log/slog"
 	"time"
 )
 
@@ -24,12 +24,14 @@ type HashnodeClient interface {
 type Hashnode struct {
 	client HashnodeClient
 	repo   ArticleRepository
+	logger *slog.Logger
 }
 
-func NewHashnode(repo ArticleRepository) *Hashnode {
+func NewHashnode(repo ArticleRepository, logger *slog.Logger) *Hashnode {
 	return &Hashnode{
 		client: hashnode.NewHashnodeClient(),
 		repo:   repo,
+		logger: logger,
 	}
 }
 
@@ -76,7 +78,10 @@ L:
 				post.PublishedAt,
 			)
 			if err != nil {
-				log.Printf("[warn] hashnode: failed to create article from post %s: %v", post.ID, err)
+				hn.logger.Warn("failed to create article",
+					"ID", post.ID,
+					"error", err,
+				)
 				continue
 			}
 
@@ -93,14 +98,21 @@ L:
 		after = &responseData.Tag.Posts.PageInfo.EndCursor
 	}
 
-	log.Printf("[info] hashnode: fetched %d articles for tag '%s'", numArticles, query.TagSlug)
+	hn.logger.Info("fetched articles",
+		"tag", query.TagSlug,
+		"count", numArticles,
+	)
+
 	return nil
 }
 
 func (hn *Hashnode) FetchArticles(ctx context.Context, articlesSince time.Time, query provider.Query) error {
 	handler := func(ctx context.Context, art *article.Article) error {
 		if err := hn.repo.UpsertArticle(ctx, art); err != nil {
-			log.Printf("[warn] hashnode: failed to upsert article %s: %v", art.ExternalID, err)
+			hn.logger.Warn("failed to upsert article",
+				"ID", art.ExternalID,
+				"error", err,
+			)
 		}
 		return nil
 	}

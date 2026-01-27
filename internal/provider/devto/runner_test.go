@@ -6,6 +6,8 @@ import (
 	"go_search/internal/article"
 	"go_search/internal/provider"
 	"go_search/internal/provider/devto/mocks"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -14,12 +16,13 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	nullLogger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 	ctx := context.Background()
 	now := time.Now()
 	articlesSince := now.Add(-24 * time.Hour)
 	tags := []string{"go", "programming"}
 	pr := mocks.NewMockDevToProvider(t)
-	runner := NewDevToRunner(pr, tags)
+	runner := NewDevToRunner(pr, nullLogger, tags)
 
 	t.Run("success", func(t *testing.T) {
 		pr.On("FetchArticles", ctx, articlesSince, provider.Query{Tags: tags}).Return(nil).Once()
@@ -41,12 +44,13 @@ func TestRun(t *testing.T) {
 }
 
 func TestRunConcurrently(t *testing.T) {
+	nullLogger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 	ctx := context.Background()
 	now := time.Now()
 	articlesSince := now.Add(-24 * time.Hour)
 	tags := []string{"go", "programming"}
 	pr := mocks.NewMockDevToProvider(t)
-	runner := NewDevToRunner(pr, tags)
+	runner := NewDevToRunner(pr, nullLogger, tags)
 
 	t.Run("success", func(t *testing.T) {
 		articlesChan := make(chan *article.Article, 1)

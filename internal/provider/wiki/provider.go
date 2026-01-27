@@ -8,7 +8,7 @@ import (
 	"go_search/internal/provider"
 	"go_search/pkg/httpclient"
 	"go_search/pkg/wiki"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
 )
@@ -29,12 +29,14 @@ type WikiClient interface {
 type Wiki struct {
 	client WikiClient
 	repo   ArticleRepository
+	logger *slog.Logger
 }
 
-func NewWiki(client WikiClient, repo ArticleRepository) *Wiki {
+func NewWiki(client WikiClient, logger *slog.Logger, repo ArticleRepository) *Wiki {
 	return &Wiki{
 		client: client,
 		repo:   repo,
+		logger: logger,
 	}
 }
 
@@ -74,7 +76,8 @@ L:
 					return fmt.Errorf("wiki: network error fetching content for %s: %w", pageId, err)
 				}
 
-				log.Printf("[warn] wiki: skipping page %s: %v", pageId, err)
+				w.logger.Warn("wiki: skipping page", "page_id", pageId, "error", err)
+
 				continue
 			}
 
@@ -89,7 +92,9 @@ L:
 				item.Timestamp,
 			)
 			if err != nil {
-				log.Printf("[warn] wiki: failed to create article from page %s: %v", pageId, err)
+				w.logger.Warn("wiki: failed to create article from page",
+					"page_id", pageId,
+					"error", err)
 				continue
 			}
 
@@ -107,7 +112,9 @@ L:
 		request.CmContinue = categoryMemberResponse.Continue.CmContinue
 	}
 
-	log.Printf("[info] wiki: fetched %d articles for category '%s'", numArticles, query.Category)
+	w.logger.Info("fetched articles",
+		"count", numArticles,
+		"category", query.Category)
 
 	return nil
 }
@@ -115,7 +122,9 @@ L:
 func (w *Wiki) FetchArticles(ctx context.Context, articlesSince time.Time, query provider.Query) error {
 	handler := func(ctx context.Context, art *article.Article) error {
 		if err := w.repo.UpsertArticle(ctx, art); err != nil {
-			log.Printf("[warn] wiki: failed to upsert article %s: %v", art.ExternalID, err)
+			w.logger.Warn("wiki: failed to upsert article",
+				"article_id", art.ExternalID,
+				"error", err)
 		}
 		return nil
 	}

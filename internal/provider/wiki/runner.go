@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"go_search/internal/article"
 	"go_search/internal/provider"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -20,13 +20,15 @@ type WikiProvider interface {
 
 type WikiRunner struct {
 	wiki              WikiProvider
+	logger            *slog.Logger
 	tags              []string
 	maxConcurrentTags int64
 }
 
-func NewWikiRunner(wiki WikiProvider, tags []string, maxConcurrentTags int64) *WikiRunner {
+func NewWikiRunner(wiki WikiProvider, logger *slog.Logger, tags []string, maxConcurrentTags int64) *WikiRunner {
 	return &WikiRunner{
 		wiki:              wiki,
+		logger:            logger,
 		tags:              tags,
 		maxConcurrentTags: maxConcurrentTags,
 	}
@@ -48,7 +50,7 @@ func (wr *WikiRunner) Run(ctx context.Context, articlesFrom time.Time) error {
 }
 
 func (wr *WikiRunner) RunConcurrently(ctx context.Context, articlesFrom time.Time, articlesChan chan<- *article.Article, errChan chan<- error) {
-	log.Println("[info] wiki runner: started")
+	wr.logger.Info("runner started")
 	var wg sync.WaitGroup
 	sem := semaphore.NewWeighted(wr.maxConcurrentTags)
 
@@ -69,7 +71,7 @@ func (wr *WikiRunner) RunConcurrently(ctx context.Context, articlesFrom time.Tim
 			}
 			defer sem.Release(1)
 
-			log.Printf("[info] wiki: fetching category '%s'", category)
+			wr.logger.Info("fetching category", "category", category)
 
 			query := provider.Query{Category: category}
 			if err := wr.wiki.FetchArticlesAsync(ctx, articlesFrom, query, articlesChan); err != nil {
@@ -81,10 +83,10 @@ func (wr *WikiRunner) RunConcurrently(ctx context.Context, articlesFrom time.Tim
 				}
 				return
 			}
-			log.Printf("[info] wiki: category '%s' completed", category)
+			wr.logger.Info("category completed successfully", "category", category)
 		}()
 	}
 
 	wg.Wait()
-	log.Println("[info] wiki runner: completed successfully")
+	wr.logger.Info("runner completed successfully")
 }

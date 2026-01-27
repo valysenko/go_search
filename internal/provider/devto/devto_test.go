@@ -9,6 +9,8 @@ import (
 	"go_search/internal/provider/devto/mocks"
 	"go_search/pkg/devto"
 	"go_search/pkg/httpclient"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -17,12 +19,14 @@ import (
 )
 
 func TestFetchArticles(t *testing.T) {
+	nullLogger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 	articlesRepo := mocks.NewMockArticleRepository(t)
 	devtoClient := mocks.NewMockClient(t)
 
 	devtoProvider := &DevTo{
 		client: devtoClient,
 		repo:   articlesRepo,
+		logger: nullLogger,
 	}
 
 	ctx := context.Background()
@@ -119,9 +123,10 @@ func TestFetchArticles(t *testing.T) {
 }
 
 func TestFetchArticlesAsync(t *testing.T) {
+	nullLogger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 	articlesRepo := mocks.NewMockArticleRepository(t)
 	devtoClient := mocks.NewMockClient(t)
-	devtoProvider := NewDevToProvider(devtoClient, articlesRepo)
+	devtoProvider := NewDevToProvider(devtoClient, articlesRepo, nullLogger)
 
 	ctx := context.Background()
 	now := time.Now()

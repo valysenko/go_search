@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"go_search/internal/article"
 	"go_search/internal/provider"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -20,13 +20,15 @@ type HashnodeProvider interface {
 
 type HashnodeRunner struct {
 	hashnode          HashnodeProvider
+	logger            *slog.Logger
 	tags              []string
 	maxConcurrentTags int64
 }
 
-func NewHashnodeRunner(hashnode HashnodeProvider, tags []string, maxConcurrentTags int64) *HashnodeRunner {
+func NewHashnodeRunner(hashnode HashnodeProvider, logger *slog.Logger, tags []string, maxConcurrentTags int64) *HashnodeRunner {
 	return &HashnodeRunner{
 		hashnode:          hashnode,
+		logger:            logger,
 		tags:              tags,
 		maxConcurrentTags: maxConcurrentTags,
 	}
@@ -48,7 +50,7 @@ func (hr *HashnodeRunner) Run(ctx context.Context, articlesFrom time.Time) error
 }
 
 func (hr *HashnodeRunner) RunConcurrently(ctx context.Context, articlesFrom time.Time, articlesChan chan<- *article.Article, errChan chan<- error) {
-	log.Println("[info] hashnode runner: started")
+	hr.logger.Info("runner started")
 	var wg sync.WaitGroup
 	sem := semaphore.NewWeighted(hr.maxConcurrentTags)
 
@@ -70,7 +72,7 @@ func (hr *HashnodeRunner) RunConcurrently(ctx context.Context, articlesFrom time
 			}
 			defer sem.Release(1)
 
-			log.Printf("[info] hashnode: fetching tag '%s'", tag)
+			hr.logger.Info("fetching tag", "tag", tag)
 
 			query := provider.Query{TagSlug: tag}
 			if err := hr.hashnode.FetchArticlesAsync(ctx, articlesFrom, query, articlesChan); err != nil {
@@ -83,10 +85,10 @@ func (hr *HashnodeRunner) RunConcurrently(ctx context.Context, articlesFrom time
 				return
 
 			}
-			log.Printf("[info] hashnode: tag '%s' completed", tag)
+			hr.logger.Info("completed tag", "tag", tag)
 		}()
 	}
 
 	wg.Wait()
-	log.Println("[info] hashnode runner: completed successfully")
+	hr.logger.Info("runner completed successfully")
 }

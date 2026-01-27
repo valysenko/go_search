@@ -10,6 +10,7 @@ import (
 	devtoClient "go_search/pkg/devto"
 	"go_search/pkg/redis"
 	wikiCLientPkg "go_search/pkg/wiki"
+	"log/slog"
 )
 
 /*
@@ -33,32 +34,57 @@ func NewFetcherStorage(redis *redis.AppRedis) *fetcher.Storage {
 * PROVIDERS
  */
 
-func NewDevtoProvider(articleRepository *article.ArticleRepository, timeoutSeconds int) devto.DevToProvider {
-	return devto.NewDevToProvider(devtoClient.NewDevToClient(timeoutSeconds), articleRepository)
+func NewDevtoProvider(articleRepository *article.ArticleRepository, logger *slog.Logger, timeoutSeconds int) devto.DevToProvider {
+	return devto.NewDevToProvider(
+		devtoClient.NewDevToClient(timeoutSeconds),
+		articleRepository,
+		logger.With("component", "devto_provider"),
+	)
 }
 
-func NewHashnodeProvider(articleRepository *article.ArticleRepository, timeoutSeconds int) hashnode.HashnodeProvider {
-	return hashnode.NewHashnode(articleRepository)
+func NewHashnodeProvider(articleRepository *article.ArticleRepository, logger *slog.Logger, timeoutSeconds int) hashnode.HashnodeProvider {
+	return hashnode.NewHashnode(
+		articleRepository,
+		logger.With("component", "hashnode_provider"),
+	)
 }
 
-func NewWikiProvider(articleRepository *article.ArticleRepository, timeoutSeconds int) wiki.WikiProvider {
-	return wiki.NewWiki(wikiCLientPkg.NewWikiClient(timeoutSeconds), articleRepository)
+func NewWikiProvider(articleRepository *article.ArticleRepository, logger *slog.Logger, timeoutSeconds int) wiki.WikiProvider {
+	return wiki.NewWiki(
+		wikiCLientPkg.NewWikiClient(timeoutSeconds),
+		logger.With("component", "wiki_provider"),
+		articleRepository,
+	)
 }
 
 /**
 * RUNNERS
  */
 
-func NewDevtoRunner(devtoProvider devto.DevToProvider, tags []string) *devto.DevToRunner {
-	return devto.NewDevToRunner(devtoProvider, tags)
+func NewDevtoRunner(devtoProvider devto.DevToProvider, logger *slog.Logger, tags []string) *devto.DevToRunner {
+	return devto.NewDevToRunner(
+		devtoProvider,
+		logger.With("component", "devto_runner", "tags", tags),
+		tags,
+	)
 }
 
-func NewHashnodeRunner(hashnodeProvider hashnode.HashnodeProvider, tags []string, maxConcurrency int64) *hashnode.HashnodeRunner {
-	return hashnode.NewHashnodeRunner(hashnodeProvider, tags, maxConcurrency)
+func NewHashnodeRunner(hashnodeProvider hashnode.HashnodeProvider, logger *slog.Logger, tags []string, maxConcurrency int64) *hashnode.HashnodeRunner {
+	return hashnode.NewHashnodeRunner(
+		hashnodeProvider,
+		logger.With("component", "hashnode_runner", "tags", tags),
+		tags,
+		maxConcurrency,
+	)
 }
 
-func NewWikiRunner(wikiProvider wiki.WikiProvider, tags []string, maxConcurrency int64) *wiki.WikiRunner {
-	return wiki.NewWikiRunner(wikiProvider, tags, maxConcurrency)
+func NewWikiRunner(wikiProvider wiki.WikiProvider, logger *slog.Logger, tags []string, maxConcurrency int64) *wiki.WikiRunner {
+	return wiki.NewWikiRunner(
+		wikiProvider,
+		logger.With("component", "wiki_runner", "tags", tags),
+		tags,
+		maxConcurrency,
+	)
 }
 
 /**
