@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -13,6 +12,7 @@ type AppConfig struct {
 	PostgreSqlConfig
 	FetcherConfig
 	ProvidersConfig
+	RedisConfig
 }
 
 type PostgreSqlConfig struct {
@@ -24,6 +24,12 @@ type PostgreSqlConfig struct {
 	MaxConns       int32  `env:"DB_MAX_CONNS"`
 	MinConns       int32  `env:"DB_MIN_CONNS"`
 	ConnectTimeout int    `env:"DB_CONNECT_TIMEOUT"`
+}
+
+type RedisConfig struct {
+	RedisUrl      string `env:"REDIS_URL"`
+	RedisPassword string `env:"REDIS_PASSWORD" env-default:""`
+	RedisDB       int    `env:"REDIS_DB" env-default:"0"`
 }
 
 type FetcherConfig struct {
@@ -47,8 +53,6 @@ func InitConfig() *AppConfig {
 
 	if err := cleanenv.ReadEnv(cfg); err != nil {
 		log.Fatalf("Error reading environment variables: %v", err)
-		help, _ := cleanenv.GetDescription(&cfg, nil)
-		fmt.Println(help)
 		panic(err)
 	}
 

@@ -1,4 +1,3 @@
-version: '3.9'
 services:
   go-search:
     restart: always
@@ -35,10 +34,40 @@ services:
     command: ["postgres", "-c", "wal_level=logical"]
     networks:
       - go-search-network
+    
+  go-search-redis:
+    image: redis:8.4-alpine
+    container_name: go-search-redis
+    restart: always
+    ports:
+      - "63795:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - go-search-network
+
+  go-search-redis-insight:
+    image: redis/redisinsight:latest
+    container_name: go-search-redis-insight
+    restart: always
+    ports:
+      - "5545:5540"
+    volumes:
+      - redis-insight-data:/data
+    environment:
+      - RI_REDIS_HOST_LOCAL=go-search-redis
+      - RI_REDIS_PORT_LOCAL=6379
+      - RI_ACCEPT_TERMS_AND_CONDITIONS=true
+    depends_on:
+      - go-search-redis
+    networks:
+      - go-search-network
 
 volumes:
   go-search-postgres-data:
     driver: local
+  redis-data:
+  redis-insight-data:
 
 networks:
   go-search-network:

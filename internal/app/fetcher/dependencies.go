@@ -8,19 +8,25 @@ import (
 	"go_search/internal/provider/wiki"
 	"go_search/pkg/database"
 	devtoClient "go_search/pkg/devto"
+	"go_search/pkg/redis"
 	wikiCLientPkg "go_search/pkg/wiki"
 )
 
 /*
 * FETCHER
  */
-func NewFetcher(articleRepository *article.ArticleRepository, batchSize int, maxConcurrency int, providerRunners ...fetcher.ProviderRunner) *fetcher.Fetcher {
+func NewFetcher(articleRepository *article.ArticleRepository, fetcherStorage *fetcher.Storage, batchSize int, maxConcurrency int, providerRunners ...fetcher.ProviderRunner) *fetcher.Fetcher {
 	return fetcher.NewFetcher(
 		articleRepository,
+		fetcherStorage,
 		batchSize,
 		maxConcurrency,
 		providerRunners...,
 	)
+}
+
+func NewFetcherStorage(redis *redis.AppRedis) *fetcher.Storage {
+	return fetcher.NewStorage(redis)
 }
 
 /**
@@ -56,7 +62,7 @@ func NewWikiRunner(wikiProvider wiki.WikiProvider, tags []string, maxConcurrency
 }
 
 /**
-* REPOSITORIES
+* DB REPOSITORIES
  */
 
 func NewArticleRepository(db *database.AppDB) *article.ArticleRepository {

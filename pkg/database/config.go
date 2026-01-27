@@ -16,28 +16,6 @@ type DBConfig struct {
 	ConnectTimeout int
 }
 
-func NewDBConfig(
-	host string,
-	port string,
-	username string,
-	password string,
-	dbName string,
-	maxConns int32,
-	minConns int32,
-	connectTimeout int,
-) *DBConfig {
-	return &DBConfig{
-		Host:           host,
-		Port:           port,
-		Username:       username,
-		Password:       password,
-		DbName:         dbName,
-		MaxConns:       maxConns,
-		MinConns:       minConns,
-		ConnectTimeout: connectTimeout,
-	}
-}
-
 func (cfg *DBConfig) ProvideDSN() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&connect_timeout=%d",
 		url.QueryEscape(cfg.Username),

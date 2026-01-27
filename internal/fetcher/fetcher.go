@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+type FetcherStorage interface {
+	GetLastFetchTime(ctx context.Context) (time.Time, error)
+	SetLastFetchTime(ctx context.Context, fetchTime time.Time) error
+}
+
 type ArticleRepository interface {
 	UpsertArticlesBatch(ctx context.Context, articles []*article.Article) error
 }
@@ -26,13 +31,15 @@ type FetcherResult struct {
 type Fetcher struct {
 	providerRunners   []ProviderRunner
 	articleRepository ArticleRepository
+	fetcherStorage    FetcherStorage
 	batchSize         int
 	maxConcurrency    int
 }
 
-func NewFetcher(articleRepository ArticleRepository, batchSize int, maxConcurrency int, providerRunners ...ProviderRunner) *Fetcher {
+func NewFetcher(articleRepository ArticleRepository, fetcherStorage FetcherStorage, batchSize int, maxConcurrency int, providerRunners ...ProviderRunner) *Fetcher {
 	return &Fetcher{
 		articleRepository: articleRepository,
+		fetcherStorage:    fetcherStorage,
 		providerRunners:   providerRunners,
 		batchSize:         batchSize,
 		maxConcurrency:    maxConcurrency,
@@ -44,11 +51,9 @@ func (f *Fetcher) RunSequential(ctx context.Context) (*FetcherResult, error) {
 	log.Println("[info] starting sequential fetcher...")
 	startTime := time.Now()
 
-	// temp. need to store date in redis for fetcher or per provider
-	s := "2026-01-20T16:00:00Z"
-	articlesFrom, err := time.Parse(time.RFC3339, s)
+	articlesFrom, err := f.fetcherStorage.GetLastFetchTime(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse date: %w", err)
+		return nil, fmt.Errorf("failed to get last fetch time: %w", err)
 	}
 
 	for _, runner := range f.providerRunners {
@@ -67,6 +72,11 @@ func (f *Fetcher) RunSequential(ctx context.Context) (*FetcherResult, error) {
 		}, nil
 	}
 
+	err = f.fetcherStorage.SetLastFetchTime(ctx, time.Now())
+	if err != nil {
+		log.Printf("[warn] failed to update last fetch time in redis: %v\n", err)
+	}
+
 	return &FetcherResult{
 		Duration: duration,
 		Errors:   nil,
@@ -77,11 +87,9 @@ func (f *Fetcher) RunConcurrently(ctx context.Context) (*FetcherResult, error) {
 	log.Println("[info] starting concurrent fetcher...")
 	startTime := time.Now()
 
-	// temp. need to store date in redis for fetcher or per provider
-	s := "2026-01-20T16:00:00Z"
-	articlesFrom, err := time.Parse(time.RFC3339, s)
+	articlesFrom, err := f.fetcherStorage.GetLastFetchTime(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse date: %w", err)
+		return nil, fmt.Errorf("failed to get last fetch time: %w", err)
 	}
 
 	// buffered channels because multiple providers can send articles/errors simultaneously
@@ -140,6 +148,11 @@ func (f *Fetcher) RunConcurrently(ctx context.Context) (*FetcherResult, error) {
 			Duration: duration,
 			Errors:   runnersErrs,
 		}, nil
+	}
+
+	err = f.fetcherStorage.SetLastFetchTime(ctx, time.Now())
+	if err != nil {
+		log.Printf("[warn] failed to update last fetch time in redis: %v\n", err)
 	}
 
 	return &FetcherResult{
