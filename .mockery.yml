@@ -23,3 +23,11 @@ packages:
       Client:
       ArticleRepository:
       DevToProvider:
+  go_search/pkg/hashnode:
+    interfaces:
+      GQLClient:
+  go_search/internal/provider/hashnode:
+    interfaces:
+      HashnodeClient:
+      ArticleRepository:
+      HashnodeProvider:
