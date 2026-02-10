@@ -1,0 +1,53 @@
+{
+  "name": "go-search-postgres-cdc",
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "plugin.name": "pgoutput",
+  "database.hostname": "go-search-postgres",
+  "database.port": "5432",
+  "database.dbname" : "go_search_db",
+  "database.user": "root",
+  "database.password": "root",
+  "topic.prefix" : "go-search-prefix",
+  "publication.autocreate.mode": "filtered",
+  "database.history.kafka.bootstrap.servers": "kafka:29092",
+  "tombstones.on.delete": "false",
+  "poll.interval.ms": "100",
+  "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+  "key.converter.schemas.enable": "false",
+  "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "value.converter.schemas.enable": "false",
+  "route.tombstone.on.empty.payload": "false",
+  "table.op.invalid.behavior": "warn",
+  "skipped.operations": "d",
+  "flush.lsn.source": "true",
+  "snapshot.mode": "initial",
+  "heartbeat.action.query": "update debezium_heartbeat set last_heartbeat_ts = now();",
+  "heartbeat.interval.ms": "3000",
+
+  "table.include.list": "public.debezium_heartbeat,public.articles",
+  "column.include.list": "public.articles.uuid,public.articles.content",
+
+  "predicates": "isArticlesTable,isAllowedTopic",
+  "predicates.isArticlesTable.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
+  "predicates.isArticlesTable.pattern": "go-search-prefix\\.public\\.articles",
+  "predicates.isAllowedTopic.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
+  "predicates.isAllowedTopic.pattern": "go-search-prefix\\.public\\.debezium_heartbeat|articles_topic",
+
+  "transforms": "unwrap,extractKey,route,filterTopics",
+  
+  "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+  "transforms.unwrap.predicate": "isArticlesTable",
+  "transforms.unwrap.drop.tombstones": "true",
+  "transforms.extractKey.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+  "transforms.extractKey.field": "uuid",
+  "transforms.extractKey.predicate": "isArticlesTable",
+
+  "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+  "transforms.route.predicate": "isArticlesTable",
+  "transforms.route.regex": ".*",
+  "transforms.route.replacement": "articles_topic",
+
+  "transforms.filterTopics.type": "org.apache.kafka.connect.transforms.Filter",
+  "transforms.filterTopics.predicate": "isAllowedTopic",
+  "transforms.filterTopics.negate": "true"
+}
