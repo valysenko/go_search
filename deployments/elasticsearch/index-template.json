@@ -1,0 +1,91 @@
+{
+  "index_patterns": ["articles*"],
+  "template": {
+    "settings": {
+      "analysis": {
+        "filter": {
+          "english_stop": {
+            "type": "stop",
+            "stopwords": "_english_"
+          },
+          "english_stemmer": {
+            "type": "stemmer",
+            "language": "english"
+          },
+          "go_search_synonym_filter": {
+            "type": "synonym",
+            "synonyms": [
+              "k8s, kubernetes",
+              "go, golang",
+              "js, javascript",
+              "ts, typescript",
+              "py, python",
+              "dns, domain name system",
+              "html, hypertext markup language",
+              "css, cascading style sheets",
+              "sql, structured query language",
+              "rest, representational state transfer",
+              "grpc, google remote procedure call",
+              "ci, continuous integration",
+              "cd, continuous delivery"
+            ]
+          }
+        },
+        "char_filter": {
+          "emoji_strip": {
+            "type": "pattern_replace",
+            "pattern": "[\\uD83C-\\uDBFF\\uDC00-\\uDFFF]+",
+            "replacement": ""
+          }
+        },
+        "analyzer": {
+          "tag_index_analyzer": {
+            "tokenizer": "standard",
+            "filter": ["lowercase"]
+          },
+          "tag_search_analyzer": {
+            "tokenizer": "standard",
+            "filter": ["lowercase", "go_search_synonym_filter"]
+          },
+          "go_search_english_index_analyzer": {
+            "type": "custom",
+            "char_filter": ["html_strip", "emoji_strip"],
+            "tokenizer": "standard",
+            "filter": ["lowercase", "english_stop", "english_stemmer"]
+          },
+          "go_search_english_search_analyzer": {
+            "type": "custom",
+            "char_filter": ["emoji_strip"],
+            "tokenizer": "standard",
+            "filter": ["lowercase", "go_search_synonym_filter", "english_stop", "english_stemmer"]
+          }
+        }
+      }
+    },
+    "mappings": {
+      "properties": {
+        "uuid": { "type": "keyword" },
+        "title": { 
+          "type": "text", 
+          "analyzer": "go_search_english_index_analyzer", 
+          "search_analyzer": "go_search_english_search_analyzer" 
+        },
+        "content": { 
+          "type": "text", 
+          "analyzer": "go_search_english_index_analyzer", 
+          "search_analyzer": "go_search_english_search_analyzer"
+        },
+        "author": { "type": "keyword" },
+        "tags": { 
+          "type": "text",
+          "analyzer": "tag_index_analyzer",
+          "search_analyzer": "tag_search_analyzer",
+          "fields": {
+            "raw": { "type": "keyword" }
+          }
+        },
+        "published_at": { "type": "date" }
+      }
+    }
+  }
+}

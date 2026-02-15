@@ -1,0 +1,18 @@
+{
+        "connector.class": "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+        "connection.url": "http://go-search-elasticsearch:9200",
+        "tasks.max": "2",
+        "topics": "articles_topic",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter.schemas.enable": "false",
+        
+        "batch.size": "3",
+        "drop.invalid.message": "true",
+        "behavior.on.null.values": "IGNORE",
+        "write.method": "UPSERT",
+ 
+        "schema.ignore": "true",
+        "key.ignore": "false",
+        "external.resource.usage": "INDEX",
+        "topic.to.external.resource.mapping": "articles_topic:articles01"
+}

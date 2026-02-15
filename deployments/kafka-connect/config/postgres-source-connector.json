@@ -25,7 +25,7 @@
   "heartbeat.interval.ms": "3000",
 
   "table.include.list": "public.debezium_heartbeat,public.articles",
-  "column.include.list": "public.articles.uuid,public.articles.content",
+  "column.include.list": "public.articles.uuid,public.articles.title,public.articles.author,public.articles.tags,public.articles.content",
 
   "predicates": "isArticlesTable,isAllowedTopic",
   "predicates.isArticlesTable.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",

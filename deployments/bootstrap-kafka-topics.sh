@@ -1,7 +1,7 @@
 #!/bin/bash
 
 KAFKA_TOPICS=(
-  article_topic
+  articles_topic
 )
 
 container='docker exec -it go-search-kafka'

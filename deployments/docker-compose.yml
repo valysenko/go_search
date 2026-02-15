@@ -62,12 +62,37 @@ services:
       - go-search-redis
     networks:
       - go-search-network
+  
+  go-search-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: go-search-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - go-search-network
+
+  go-search-elasticvue:
+    image: cars10/elasticvue
+    container_name: go-search-elasticvue
+    ports:
+      - "8086:8080"
+    depends_on:
+      - go-search-elasticsearch
+    networks:
+      - go-search-network
 
 volumes:
   go-search-postgres-data:
     driver: local
   redis-data:
   redis-insight-data:
+  es_data:
 
 networks:
   go-search-network:
