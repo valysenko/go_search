@@ -31,3 +31,11 @@ packages:
       HashnodeClient:
       ArticleRepository:
       HashnodeProvider:
+  go_search/pkg/wiki:
+    interfaces:
+      HTTPClient:
+  go_search/internal/provider/wiki:
+    interfaces:
+      WikiClient:
+      ArticleRepository:
+      WikiProvider:

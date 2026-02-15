@@ -39,7 +39,7 @@ func (wc *WikiClient) GetCategoryMembers(ctx context.Context, request *GetCatego
 	var result CategoryMembersResponse
 	err := wc.client.Get(ctx, path, headers, &result)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get category members from %d: %w", request.CmContinue, err)
+		return nil, fmt.Errorf("failed to get category members from %s: %w", request.CmContinue, err)
 	}
 
 	return &result, nil
@@ -83,7 +83,7 @@ func (wc *WikiClient) GetAllCategoryMembersWithPageContent(ctx context.Context, 
 	var result CategoryMembersWithExtractResponse
 	err := wc.client.Get(ctx, url, headers, &result)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get category members from %d: %w", request.GcmContinue, err)
+		return nil, fmt.Errorf("failed to get category members from %s: %w", request.GcmContinue, err)
 	}
 
 	return &result, nil
