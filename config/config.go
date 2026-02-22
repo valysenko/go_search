@@ -33,8 +33,11 @@ type RedisConfig struct {
 }
 
 type FetcherConfig struct {
-	ArticlesBarchSize int `env:"ARTICLES_BATCH_SIZE" env-default:"10"`
-	MaxConcurrency    int `env:"MAX_CONCURRENCY" env-default:"3"`
+	DbInserterBatchSize    int `env:"DB_INSERTER_BATCH_SIZE" env-default:"10"`
+	MaxConcurrentProviders int `env:"MAX_CONCURRENT_PROVIDERS" env-default:"5"`
+	MaxConcurrentDbWriters int `env:"MAX_CONCURRENT_DB_WRITERS" env-default:"2"`
+	ArticlesChanBatchSize  int `env:"ARTICLES_CHAN_BATCH_SIZE" env-default:"500"`
+	ErrorsChanBatchSize    int `env:"ERRORS_CHAN_BATCH_SIZE" env-default:"50"`
 }
 
 type ProvidersConfig struct {

@@ -16,18 +16,27 @@ import (
 /*
 * FETCHER
  */
-func NewFetcher(articleRepository *article.ArticleRepository, fetcherStorage *fetcher.Storage, batchSize int, maxConcurrency int, providerRunners ...fetcher.ProviderRunner) *fetcher.Fetcher {
+func NewFetcher(articleRepository *article.ArticleRepository, fetcherStorage *fetcher.Storage, batchWriter *fetcher.DbBatchWriter, logger *slog.Logger, fetcherParams *fetcher.FetcherParams, providerRunners ...fetcher.ProviderRunner) *fetcher.Fetcher {
 	return fetcher.NewFetcher(
 		articleRepository,
 		fetcherStorage,
-		batchSize,
-		maxConcurrency,
+		batchWriter,
+		logger,
+		fetcherParams,
 		providerRunners...,
 	)
 }
 
 func NewFetcherStorage(redis *redis.AppRedis) *fetcher.Storage {
 	return fetcher.NewStorage(redis)
+}
+
+func NewDbBatchWriter(articleRepository *article.ArticleRepository, logger *slog.Logger, batchSize int) *fetcher.DbBatchWriter {
+	return fetcher.NewDbBatchWriter(
+		articleRepository,
+		logger.With("component", "db_batch_writer"),
+		batchSize,
+	)
 }
 
 /**

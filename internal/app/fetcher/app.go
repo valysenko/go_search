@@ -4,6 +4,7 @@ import (
 	"context"
 	"go_search/config"
 	"go_search/internal/article"
+	"go_search/internal/fetcher"
 	"go_search/internal/provider/devto"
 	"go_search/internal/provider/hashnode"
 	"go_search/internal/provider/wiki"
@@ -65,11 +66,18 @@ func (fa *FetcherApp) Run(ctx context.Context) {
 	wikiRunner := wiki.NewWikiRunner(wikiProvider, fa.logger, fa.cfg.ProvidersConfig.WikiCategories, fa.cfg.ProvidersConfig.WikiMaxConcurrency)
 
 	fetcherRepository := NewFetcherStorage(fa.redis)
+	batchWriter := NewDbBatchWriter(articleRepository, fa.logger, fa.cfg.FetcherConfig.DbInserterBatchSize)
 	fetcher := NewFetcher(
 		articleRepository,
 		fetcherRepository,
-		fa.cfg.FetcherConfig.ArticlesBarchSize,
-		fa.cfg.FetcherConfig.MaxConcurrency,
+		batchWriter,
+		fa.logger,
+		&fetcher.FetcherParams{
+			MaxConcurrentProviders: fa.cfg.FetcherConfig.MaxConcurrentProviders,
+			MaxConcurrentDbWriters: fa.cfg.FetcherConfig.MaxConcurrentDbWriters,
+			ArticlesChanBatchSize:  fa.cfg.FetcherConfig.ArticlesChanBatchSize,
+			ErrorsChanBatchSize:    fa.cfg.FetcherConfig.ErrorsChanBatchSize,
+		},
 		devtoRunner,
 		hashnodeRunner,
 		wikiRunner,
@@ -85,7 +93,7 @@ func (fa *FetcherApp) Run(ctx context.Context) {
 		os.Exit(1)
 	}
 
-	fa.logger.Info("fetch completed", "duration", result.Duration)
+	fa.logger.Info("fetch completed", "duration", result.Duration.Seconds())
 
 	if len(result.Errors) > 0 {
 		fa.logger.Warn("runner errors occurred during execution",

@@ -24,7 +24,8 @@ COPY --from=prod /src/bin/runner /bin/runner
 CMD ["/bin/runner"]
 
 # development env - 2 stage
-FROM golang:1.24.3-alpine3.20 AS final-dev
+FROM golang:1.25.7-alpine3.23 AS final-dev
+RUN apk add --no-cache gcc musl-dev
 WORKDIR /app
 COPY --from=dev /src /app
 CMD ["air"]
