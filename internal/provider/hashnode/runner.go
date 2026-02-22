@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go_search/internal/article"
 	"go_search/internal/provider"
+	"go_search/pkg/workerpool"
 	"log/slog"
 	"sync"
 	"time"
@@ -18,6 +19,13 @@ type HashnodeProvider interface {
 	FetchArticlesAsync(ctx context.Context, articlesSince time.Time, query provider.Query, articlesChan chan<- *article.Article) error
 }
 
+/*
+* Hashnode runner contains several implementations:
+* - Run: sequential fetching of tags
+* - RunConcurrently: concurrent fetching of tags with goroutines and semaphore for limiting concurrency
+* - RunConcurrentlyWP: concurrent fetching of tags using a worker pool (tasks are prepared and sent to the pool, results are collected after all tasks are done)
+* - RunConcurrentlyWPStreaming: concurrent fetching of tags using a worker pool with streaming results (tasks are prepared and sent to the pool, results are processed as they come in)
+ */
 type HashnodeRunner struct {
 	hashnode          HashnodeProvider
 	logger            *slog.Logger
@@ -83,7 +91,6 @@ func (hr *HashnodeRunner) RunConcurrently(ctx context.Context, articlesFrom time
 					return
 				}
 				return
-
 			}
 			hr.logger.Info("completed tag", "tag", tag)
 		}()
@@ -91,4 +98,66 @@ func (hr *HashnodeRunner) RunConcurrently(ctx context.Context, articlesFrom time
 
 	wg.Wait()
 	hr.logger.Info("runner completed successfully")
+}
+
+// example of worker pool usage
+func (hn *HashnodeRunner) RunConcurrentlyWP(ctx context.Context, articlesFrom time.Time, articlesChan chan<- *article.Article, errChan chan<- error) {
+	hn.logger.Info("worker pool runner started")
+	tasks := hn.prepareTasksForWorkerPool(articlesFrom, articlesChan)
+	pool := workerpool.NewPool(tasks, int(hn.maxConcurrentTags))
+
+	responses := pool.Run(ctx)
+
+	for _, resp := range responses {
+		if resp.Err != nil {
+			select {
+			case errChan <- fmt.Errorf("hashnode tag failed: %w", resp.Err):
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+
+	hn.logger.Info("runner completed successfully")
+}
+
+// example of worker pool usage with streaming results
+func (hn *HashnodeRunner) RunConcurrentlyWPStreaming(ctx context.Context, articlesFrom time.Time, articlesChan chan<- *article.Article, errChan chan<- error) {
+	hn.logger.Info("worker pool streaming runner started")
+	tasks := hn.prepareTasksForWorkerPool(articlesFrom, articlesChan)
+	pool := workerpool.NewPool(tasks, int(hn.maxConcurrentTags))
+
+	for resp := range pool.RunStream(ctx) {
+		if resp.Err != nil {
+			select {
+			case errChan <- fmt.Errorf("hashnode tag failed: %w", resp.Err):
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+
+	hn.logger.Info("runner completed successfully")
+}
+
+func (hn *HashnodeRunner) prepareTasksForWorkerPool(articlesFrom time.Time, articlesChan chan<- *article.Article) []*workerpool.Task[string, struct{}] {
+	tasks := make([]*workerpool.Task[string, struct{}], 0, len(hn.tags))
+	for i, tag := range hn.tags {
+		task := workerpool.NewTask(
+			func(ctx context.Context, tag string) (struct{}, error) {
+				hn.logger.Info("fetching tag", "tag", tag)
+				err := hn.hashnode.FetchArticlesAsync(ctx, articlesFrom, provider.Query{TagSlug: tag}, articlesChan)
+				if err == nil {
+					hn.logger.Info("tag completed successfully", "tag", tag)
+				}
+				return struct{}{}, err
+			},
+			tag,
+			i,
+		)
+
+		tasks = append(tasks, task)
+	}
+
+	return tasks
 }
