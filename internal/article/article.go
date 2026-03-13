@@ -16,17 +16,17 @@ const (
 )
 
 type Article struct {
-	UUID        string
-	ExternalID  string
-	CreatedAt   time.Time
-	UpdateddAt  time.Time
-	PublishedAt time.Time
-	Title       string
-	URL         string
-	Content     string
-	Author      string
-	Tags        []string
-	Source      Source
+	UUID        string    `json:"uuid"`
+	ExternalID  string    `json:"external_id,omitempty"`
+	CreatedAt   time.Time `json:"created_at,omitempty"`
+	UpdateddAt  time.Time `json:"updated_at,omitempty"`
+	PublishedAt time.Time `json:"published_at,omitempty"`
+	Title       string    `json:"title"`
+	URL         string    `json:"url"`
+	Content     string    `json:"content"`
+	Author      string    `json:"author"`
+	Tags        []string  `json:"tags"`
+	Source      Source    `json:"source"`
 }
 
 func NewArticle(externalID, title, url, content, author string, source Source, tags []string, publishedAt time.Time) (*Article, error) {
@@ -48,4 +48,13 @@ func NewArticle(externalID, title, url, content, author string, source Source, t
 		Source:      source,
 		PublishedAt: publishedAt,
 	}, nil
+}
+
+type IndexArticle struct {
+	UUID        string   `json:"uuid"`
+	Title       string   `json:"title"`
+	Author      string   `json:"author"`
+	Tags        []string `json:"tags"`
+	Highlight   string   `json:"highlight"`
+	PublishedAt string   `json:"published_at"`
 }

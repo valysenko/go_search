@@ -75,7 +75,7 @@
           "analyzer": "go_search_english_index_analyzer", 
           "search_analyzer": "go_search_english_search_analyzer"
         },
-        "author": { "type": "keyword" },
+        "author": { "type": "keyword", "normalizer": "lowercase"},
         "tags": { 
           "type": "text",
           "analyzer": "tag_index_analyzer",
