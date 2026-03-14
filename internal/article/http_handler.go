@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 )
 
 type SearchQuery struct {
@@ -22,8 +23,13 @@ func NewArticleHandler(repo *ArticleSearchRepository, logger *slog.Logger) *Arti
 }
 
 func (ah *ArticleHandler) GetArticle(c fiber.Ctx) error {
+	uuidParam := c.Params("uuid")
+	if _, err := uuid.Parse(uuidParam); err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString("invalid uuid format")
+	}
+
 	ctx := context.Background()
-	article, err := ah.searchRepo.GetArticleByUuid(ctx, c.Params("uuid"))
+	article, err := ah.searchRepo.GetArticleByUuid(ctx, uuidParam)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).SendString("not found")
 	}
@@ -35,7 +41,8 @@ func (ah *ArticleHandler) SearchArticle(c fiber.Ctx) error {
 	ctx := context.Background()
 	req := &SearchQuery{Limit: 10}
 	if err := c.Bind().Query(req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		ah.logger.Warn("Failed to bind query parameters", "error", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request parameters"})
 	}
 
 	searchResult, err := ah.searchRepo.SearchArticle(ctx, req.Query, req.Limit)

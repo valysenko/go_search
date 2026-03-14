@@ -14,7 +14,7 @@ A distributed article aggregation and search system built to explore Go, CDC pat
 ## Features
 
 1. **Multi-Source Aggregator:** Concurrent Go fetcher that pulls articles from Wiki, Dev.to and Hashnode.
-2. **Http server:** Http server using Fiber. Provides full-text search endpoint and endpoint for retrieving article by uuid.
+2. **Http server:** Http server using Fiber. Provides full-text search endpoint and endpoint for retrieving article by uuid. There are 2 apps with different dependencies management: manual and using fx library.
 3. **Real-time CDC Pipeline:** CDC using Kafka Connect (Debezium Postgresql Source Connector, Elasticsearch Sink Connector) to synchronize PostgreSQL state with Elasticsearch.
 4. **Articles indexing and search:** 
     - Advanced full-text search indexing. Analyzers use char filters (html&emoji strip) and token filters (lowercase, English stopwords, stemming and search-time synonyms).

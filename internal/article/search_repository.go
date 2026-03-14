@@ -69,6 +69,8 @@ func (repo *ArticleSearchRepository) SearchArticle(ctx context.Context, query st
 				},
 			},
 			Highlight: &types.Highlight{
+				PreTags:  []string{"[["},
+				PostTags: []string{"]]"},
 				Fields: map[string]types.HighlightField{
 					"content": {
 						FragmentSize:      ptr(100),
