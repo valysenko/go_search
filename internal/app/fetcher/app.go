@@ -107,4 +107,5 @@ func (fa *FetcherApp) Run(ctx context.Context) {
 
 func (app *FetcherApp) Close(ctx context.Context) {
 	app.db.Postgresql.Close()
+	app.redis.Close()
 }

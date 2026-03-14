@@ -24,3 +24,7 @@ func InitRedis(redisConfig *RedisConfig) *AppRedis {
 		Client: redisClient,
 	}
 }
+
+func (ar *AppRedis) Close() {
+	ar.Client.Close()
+}
