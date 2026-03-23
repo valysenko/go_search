@@ -77,13 +77,33 @@ services:
     networks:
       - go-search-network
 
-  go-search-elasticvue:
-    image: cars10/elasticvue
-    container_name: go-search-elasticvue
+  go-search-postgres-test:
+    image: postgres:17.2-alpine
+    container_name: go-search-postgres-test
+    restart: always
+    volumes:
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
     ports:
-      - "8086:8080"
-    depends_on:
-      - go-search-elasticsearch
+      - 15435:5432
+    environment:
+      POSTGRES_DB: ${DB_NAME}-test
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      SCHEMA: ${DB_SCHEMA}
+      POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_HOST_AUTH_METHOD}
+    command: ["postgres", "-c", "wal_level=logical"]
+    networks:
+      - go-search-network
+  
+  go-search-elasticsearch-test:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: go-search-elasticsearch-test
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9201:9200"
     networks:
       - go-search-network
 
