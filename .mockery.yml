@@ -39,3 +39,9 @@ packages:
       WikiClient:
       ArticleRepository:
       WikiProvider:
+  go_search/internal/fetcher:
+    interfaces:
+      ArticleRepository:
+      FetcherStorage:
+      BatchWriter:
+      ProviderRunner:
