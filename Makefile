@@ -1,6 +1,7 @@
 PROJECT_NAME=go-search
 BASE_COMPOSE_PATH=./deployments/docker-compose.yml
 KAFKA_COMPOSE_PATH=./deployments/docker-compose-kafka.yml
+MONITORING_COMPOSE_PATH=./deployments/docker-compose-monitoring.yml
 
 # golang app
 build:
@@ -22,6 +23,10 @@ start-kafka-cdc:
 	bash ./deployments/bootstrap-kafka-topics.sh
 	curl -X PUT localhost:8083/connectors/go-search-postgres-cdc/config -H 'Content-Type: application/json' -d @./deployments/kafka-connect/config/postgres-source-connector.json
 	curl -X PUT localhost:8083/connectors/go-search-elasticsearch-sink/config -H 'Content-Type: application/json' -d @./deployments/kafka-connect/config/elasticsearch-sink-connector.json
+
+# monitoring
+up-monitoring:
+	docker-compose -p $(PROJECT_NAME) -f $(BASE_COMPOSE_PATH) -f $(MONITORING_COMPOSE_PATH) up -d
 
 # elasticsearch
 create-elasticsearch-index-with-template:

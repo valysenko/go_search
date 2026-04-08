@@ -2,8 +2,11 @@ package http
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"go_search/config"
+	"go_search/internal/monitoring"
 	"go_search/pkg/database"
 	"go_search/pkg/es"
 	"log/slog"
@@ -14,6 +17,9 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
+	"github.com/gofiber/fiber/v3/middleware/basicauth"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type structValidator struct {
@@ -26,14 +32,17 @@ func (v *structValidator) Validate(out any) error {
 }
 
 type HttpServerApp struct {
-	server     *fiber.App
-	db         *database.AppDB
-	es         *es.Client
-	logger     *slog.Logger
-	serverPort string
+	server      *fiber.App
+	db          *database.AppDB
+	es          *es.Client
+	logger      *slog.Logger
+	ms          *monitoring.PrometheusMetricsService
+	serverPort  string
+	metricsAuth config.MetricsAuth
 }
 
 func NewHttpServerApp(cfg *config.HttpAppConfig) *HttpServerApp {
+	appName := "http_server_app"
 	appDb := database.InitDB(&database.DBConfig{
 		Host:           cfg.PostgreSqlConfig.Host,
 		Port:           cfg.PostgreSqlConfig.Port,
@@ -69,6 +78,8 @@ func NewHttpServerApp(cfg *config.HttpAppConfig) *HttpServerApp {
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
+	ms := NewMetricsService(cfg.Namespace, appName, cfg.PodName)
+
 	fCfg := fiber.Config{
 		ReadTimeout:     60 * time.Second,
 		WriteTimeout:    120 * time.Second,
@@ -77,11 +88,13 @@ func NewHttpServerApp(cfg *config.HttpAppConfig) *HttpServerApp {
 	fiber := fiber.New(fCfg)
 
 	app := &HttpServerApp{
-		db:         appDb,
-		es:         esClient,
-		logger:     logger,
-		server:     fiber,
-		serverPort: cfg.AppPort,
+		db:          appDb,
+		es:          esClient,
+		logger:      logger,
+		server:      fiber,
+		serverPort:  cfg.AppPort,
+		ms:          ms,
+		metricsAuth: cfg.MetricsAuth,
 	}
 
 	app.setupRoutes()
@@ -91,11 +104,22 @@ func NewHttpServerApp(cfg *config.HttpAppConfig) *HttpServerApp {
 
 func (app *HttpServerApp) setupRoutes() {
 	handler := NewArticleHandler(app)
+
 	apiV1 := app.server.Group("/api/v1")
+	apiV1.Use(monitoring.HttpMonitoringMiddleware(app.ms))
 	article := apiV1.Group("/article")
 
 	article.Get("/search", handler.SearchArticle)
 	article.Get("/:uuid", handler.GetArticle)
+
+	promMetrics := app.server.Group("/metrics")
+	passHash := sha256.Sum256([]byte(app.metricsAuth.BasicAuthPassword))
+	promMetrics.Use(basicauth.New(basicauth.Config{
+		Users: map[string]string{
+			app.metricsAuth.BasicAuthUsername: hex.EncodeToString(passHash[:]),
+		},
+	}))
+	promMetrics.Get("", adaptor.HTTPHandler(promhttp.HandlerFor(app.ms.Registry(), promhttp.HandlerOpts{})))
 }
 
 func (app *HttpServerApp) Run() error {

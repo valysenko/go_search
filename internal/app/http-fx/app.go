@@ -10,6 +10,7 @@ var Module = fx.Module("http-server",
 	fx.Provide(
 		ProvideFiberApp,
 		ProvideValidator,
+		ProvideMetricsService,
 	),
 	fx.Provide(
 		ProvideArticleHandler,
