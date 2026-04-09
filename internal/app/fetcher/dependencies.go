@@ -3,6 +3,7 @@ package fetcher
 import (
 	"go_search/internal/article"
 	"go_search/internal/fetcher"
+	"go_search/internal/monitoring"
 	"go_search/internal/provider/devto"
 	"go_search/internal/provider/hashnode"
 	"go_search/internal/provider/wiki"
@@ -16,13 +17,21 @@ import (
 /*
 * FETCHER
  */
-func NewFetcher(articleRepository *article.ArticleRepository, fetcherStorage *fetcher.Storage, batchWriter *fetcher.DbBatchWriter, logger *slog.Logger, fetcherParams *fetcher.FetcherParams, providerRunners ...fetcher.ProviderRunner) *fetcher.Fetcher {
+func NewFetcher(
+	articleRepository *article.ArticleRepository,
+	fetcherStorage *fetcher.Storage,
+	batchWriter *fetcher.DbBatchWriter,
+	logger *slog.Logger,
+	fetcherParams *fetcher.FetcherParams,
+	metricsService fetcher.FetcherMetrics,
+	providerRunners ...fetcher.ProviderRunner) *fetcher.Fetcher {
 	return fetcher.NewFetcher(
 		articleRepository,
 		fetcherStorage,
 		batchWriter,
 		logger,
 		fetcherParams,
+		metricsService,
 		providerRunners...,
 	)
 }
@@ -31,10 +40,15 @@ func NewFetcherStorage(redis *redis.AppRedis) *fetcher.Storage {
 	return fetcher.NewStorage(redis)
 }
 
-func NewDbBatchWriter(articleRepository *article.ArticleRepository, logger *slog.Logger, batchSize int) *fetcher.DbBatchWriter {
+func NewMetricsService(namespace, subsystem, podName, pushGatewayUrl string) *monitoring.FetcherPrometheusMetricsService {
+	return monitoring.NewFetcherPrometheusMetricsService(namespace, subsystem, podName, pushGatewayUrl)
+}
+
+func NewDbBatchWriter(articleRepository *article.ArticleRepository, metricsService fetcher.BatchWriterMetrics, logger *slog.Logger, batchSize int) *fetcher.DbBatchWriter {
 	return fetcher.NewDbBatchWriter(
 		articleRepository,
 		logger.With("component", "db_batch_writer"),
+		metricsService,
 		batchSize,
 	)
 }

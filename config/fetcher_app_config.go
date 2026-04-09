@@ -7,8 +7,10 @@ import (
 )
 
 type AppConfig struct {
-	AppEnv  string `env:"APP_ENV" env-default:"loc"`
-	PodName string `env:"POD_NAME"  env-default:"pod-name-was-not-set"`
+	AppEnv         string `env:"APP_ENV" env-default:"loc"`
+	PodName        string `env:"POD_NAME"  env-default:"pod-name-was-not-set"`
+	Namespace      string `env:"NAMESPACE"  env-default:"namespace-was-not-set"`
+	PushgatewayURL string `env:"PUSHGATEWAY_URL" env-default:""`
 	PostgreSqlConfig
 	FetcherConfig
 	ProvidersConfig

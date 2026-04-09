@@ -13,7 +13,7 @@ var Module = fx.Module("fetcher-fx",
 	fx.Provide(
 		fx.Annotate(
 			ProvideFetcher,
-			fx.ParamTags(``, ``, ``, ``, ``, `group:"runners"`),
+			fx.ParamTags(``, ``, ``, ``, ``, ``, `group:"runners"`),
 		),
 	),
 	// fetcher parts
@@ -46,6 +46,7 @@ var Module = fx.Module("fetcher-fx",
 		ProvideDbBatchWriter,
 		ProvideRedis,
 		ProvideFetcherStorage,
+		ProvideFetcherMetrics,
 	),
 	// in order to run Fetcher - need to invoke any function which depends on it
 	fx.Invoke(RunFetcherJob),

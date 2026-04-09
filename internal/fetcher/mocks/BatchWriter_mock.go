@@ -39,8 +39,8 @@ func (_m *MockBatchWriter) EXPECT() *MockBatchWriter_Expecter {
 }
 
 // Run provides a mock function for the type MockBatchWriter
-func (_mock *MockBatchWriter) Run(ctx context.Context, articlesChan <-chan *article.Article, errChan chan<- error) {
-	_mock.Called(ctx, articlesChan, errChan)
+func (_mock *MockBatchWriter) Run(ctx context.Context, articlesChan <-chan *article.Article, errChan chan<- error, runId string) {
+	_mock.Called(ctx, articlesChan, errChan, runId)
 	return
 }
 
@@ -53,11 +53,12 @@ type MockBatchWriter_Run_Call struct {
 //   - ctx context.Context
 //   - articlesChan <-chan *article.Article
 //   - errChan chan<- error
-func (_e *MockBatchWriter_Expecter) Run(ctx interface{}, articlesChan interface{}, errChan interface{}) *MockBatchWriter_Run_Call {
-	return &MockBatchWriter_Run_Call{Call: _e.mock.On("Run", ctx, articlesChan, errChan)}
+//   - runId string
+func (_e *MockBatchWriter_Expecter) Run(ctx interface{}, articlesChan interface{}, errChan interface{}, runId interface{}) *MockBatchWriter_Run_Call {
+	return &MockBatchWriter_Run_Call{Call: _e.mock.On("Run", ctx, articlesChan, errChan, runId)}
 }
 
-func (_c *MockBatchWriter_Run_Call) Run(run func(ctx context.Context, articlesChan <-chan *article.Article, errChan chan<- error)) *MockBatchWriter_Run_Call {
+func (_c *MockBatchWriter_Run_Call) Run(run func(ctx context.Context, articlesChan <-chan *article.Article, errChan chan<- error, runId string)) *MockBatchWriter_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -71,10 +72,15 @@ func (_c *MockBatchWriter_Run_Call) Run(run func(ctx context.Context, articlesCh
 		if args[2] != nil {
 			arg2 = args[2].(chan<- error)
 		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -85,7 +91,7 @@ func (_c *MockBatchWriter_Run_Call) Return() *MockBatchWriter_Run_Call {
 	return _c
 }
 
-func (_c *MockBatchWriter_Run_Call) RunAndReturn(run func(ctx context.Context, articlesChan <-chan *article.Article, errChan chan<- error)) *MockBatchWriter_Run_Call {
+func (_c *MockBatchWriter_Run_Call) RunAndReturn(run func(ctx context.Context, articlesChan <-chan *article.Article, errChan chan<- error, runId string)) *MockBatchWriter_Run_Call {
 	_c.Run(run)
 	return _c
 }

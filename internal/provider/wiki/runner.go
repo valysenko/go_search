@@ -77,7 +77,7 @@ func (wr *WikiRunner) RunConcurrently(ctx context.Context, articlesFrom time.Tim
 			if err := wr.wiki.FetchArticlesAsync(ctx, articlesFrom, query, articlesChan); err != nil {
 				// prevent deadlock in case errChan is blocked forever
 				select {
-				case errChan <- fmt.Errorf("wiki category %s: %w", category, err):
+				case errChan <- &provider.ProviderError{Provider: provider.Wiki, Err: err, Msg: fmt.Sprintf("wiki category %s failed", category)}:
 				case <-ctx.Done():
 					return
 				}

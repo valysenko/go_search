@@ -15,6 +15,19 @@ const (
 	SourceWiki
 )
 
+func (s Source) String() string {
+	switch s {
+	case SourceDevTo:
+		return "devto"
+	case SourceHashnode:
+		return "hashnode"
+	case SourceWiki:
+		return "wiki"
+	default:
+		return "unknown"
+	}
+}
+
 type Article struct {
 	UUID        string    `json:"uuid"`
 	ExternalID  string    `json:"external_id,omitempty"`

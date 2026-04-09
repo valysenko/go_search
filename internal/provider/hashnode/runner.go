@@ -86,7 +86,7 @@ func (hr *HashnodeRunner) RunConcurrently(ctx context.Context, articlesFrom time
 			if err := hr.hashnode.FetchArticlesAsync(ctx, articlesFrom, query, articlesChan); err != nil {
 				// prevent deadlock in case errChan is blocked forever
 				select {
-				case errChan <- fmt.Errorf("hashnode runner failed for tag '%s': %w", tag, err):
+				case errChan <- &provider.ProviderError{Provider: provider.Hashnode, Err: err, Msg: fmt.Sprintf("hashnode runner failed for tag '%s'", tag)}:
 				case <-ctx.Done():
 					return
 				}
@@ -111,7 +111,7 @@ func (hn *HashnodeRunner) RunConcurrentlyWP(ctx context.Context, articlesFrom ti
 	for _, resp := range responses {
 		if resp.Err != nil {
 			select {
-			case errChan <- fmt.Errorf("hashnode tag failed: %w", resp.Err):
+			case errChan <- &provider.ProviderError{Provider: provider.Hashnode, Err: resp.Err, Msg: "hashnode tag failed"}:
 			case <-ctx.Done():
 				return
 			}
@@ -130,7 +130,7 @@ func (hn *HashnodeRunner) RunConcurrentlyWPStreaming(ctx context.Context, articl
 	for resp := range pool.RunStream(ctx) {
 		if resp.Err != nil {
 			select {
-			case errChan <- fmt.Errorf("hashnode tag failed: %w", resp.Err):
+			case errChan <- &provider.ProviderError{Provider: provider.Hashnode, Err: resp.Err, Msg: "hashnode tag failed"}:
 			case <-ctx.Done():
 				return
 			}

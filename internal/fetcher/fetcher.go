@@ -2,9 +2,12 @@ package fetcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"go_search/internal/article"
+	"go_search/internal/provider"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -19,12 +22,18 @@ type ArticleRepository interface {
 }
 
 type BatchWriter interface {
-	Run(ctx context.Context, articlesChan <-chan *article.Article, errChan chan<- error)
+	Run(ctx context.Context, articlesChan <-chan *article.Article, errChan chan<- error, runId string)
 }
 
 type ProviderRunner interface {
 	Run(ctx context.Context, articlesFrom time.Time) error
 	RunConcurrently(ctx context.Context, articlesFrom time.Time, articlesChan chan<- *article.Article, errChan chan<- error)
+}
+
+type FetcherMetrics interface {
+	ObserveRunDuration(duration time.Duration, runID string)
+	IncrementErrorsTotal(category, runID string)
+	Push() error
 }
 
 type FetcherParams struct {
@@ -46,15 +55,17 @@ type Fetcher struct {
 	batchWriter       BatchWriter
 	logger            *slog.Logger
 	params            *FetcherParams
+	metrics           FetcherMetrics
 }
 
-func NewFetcher(articleRepository ArticleRepository, fetcherStorage FetcherStorage, batchWriter BatchWriter, logger *slog.Logger, fetcherParams *FetcherParams, providerRunners ...ProviderRunner) *Fetcher {
+func NewFetcher(articleRepository ArticleRepository, fetcherStorage FetcherStorage, batchWriter BatchWriter, logger *slog.Logger, fetcherParams *FetcherParams, metrics FetcherMetrics, providerRunners ...ProviderRunner) *Fetcher {
 	return &Fetcher{
 		articleRepository: articleRepository,
 		fetcherStorage:    fetcherStorage,
 		providerRunners:   providerRunners,
 		batchWriter:       batchWriter,
 		logger:            logger,
+		metrics:           metrics,
 		params:            fetcherParams,
 	}
 }
@@ -97,6 +108,8 @@ func (f *Fetcher) RunSequential(ctx context.Context) (*FetcherResult, error) {
 }
 
 func (f *Fetcher) RunConcurrently(ctx context.Context) (*FetcherResult, error) {
+	runId := time.Now().UnixMilli()
+	runIdStr := strconv.FormatInt(runId, 10)
 	f.logger.Info("starting concurrent fetcher...")
 	startTime := time.Now()
 
@@ -115,7 +128,7 @@ func (f *Fetcher) RunConcurrently(ctx context.Context) (*FetcherResult, error) {
 		batchWriterWg.Add(1)
 		go func() {
 			defer batchWriterWg.Done()
-			f.batchWriter.Run(ctx, articlesChan, errChan)
+			f.batchWriter.Run(ctx, articlesChan, errChan, runIdStr)
 		}()
 	}
 
@@ -127,6 +140,14 @@ func (f *Fetcher) RunConcurrently(ctx context.Context) (*FetcherResult, error) {
 		defer close(errsDoneSignal)
 		for err := range errChan {
 			runnersErrs = append(runnersErrs, err)
+			var pe *provider.ProviderError
+			if errors.As(err, &pe) {
+				f.metrics.IncrementErrorsTotal(string(pe.Provider), runIdStr)
+			}
+			var bwe *BatchWriterError
+			if errors.As(err, &bwe) {
+				f.metrics.IncrementErrorsTotal("batch_writer", runIdStr)
+			}
 		}
 	}()
 
@@ -159,16 +180,23 @@ func (f *Fetcher) RunConcurrently(ctx context.Context) (*FetcherResult, error) {
 
 	duration := time.Since(startTime)
 	f.logger.Info("all providers completed", "duration", duration)
+
+	err = f.fetcherStorage.SetLastFetchTime(ctx, time.Now())
+	if err != nil {
+		f.logger.Warn("failed to update last fetch time in redis", "error", err)
+	}
+
+	f.metrics.ObserveRunDuration(duration, runIdStr)
+	err = f.metrics.Push()
+	if err != nil {
+		f.logger.Warn("failed to push fetcher metrics", "error", err)
+	}
+
 	if len(runnersErrs) > 0 {
 		return &FetcherResult{
 			Duration: duration,
 			Errors:   runnersErrs,
 		}, nil
-	}
-
-	err = f.fetcherStorage.SetLastFetchTime(ctx, time.Now())
-	if err != nil {
-		f.logger.Warn("failed to update last fetch time in redis", "error", err)
 	}
 
 	return &FetcherResult{

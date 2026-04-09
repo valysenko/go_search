@@ -4,10 +4,18 @@ global:
   scrape_timeout: 10s
 
 scrape_configs:
-  - job_name: backend-metrics
+  - job_name: http-metrics
     metrics_path: /metrics
     basic_auth:
       username: localuser
       password: localpassword  
     static_configs:
       - targets: ["host.docker.internal:8097"]
+  - job_name: fetcher-job-pushgateway-metrics
+    honor_timestamps: true
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+    - targets: ["host.docker.internal:9091"]

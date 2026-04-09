@@ -66,7 +66,13 @@ func (fa *FetcherApp) Run(ctx context.Context) {
 	wikiRunner := wiki.NewWikiRunner(wikiProvider, fa.logger, fa.cfg.ProvidersConfig.WikiCategories, fa.cfg.ProvidersConfig.WikiMaxConcurrency)
 
 	fetcherRepository := NewFetcherStorage(fa.redis)
-	batchWriter := NewDbBatchWriter(articleRepository, fa.logger, fa.cfg.FetcherConfig.DbInserterBatchSize)
+	metricsService := NewMetricsService(
+		fa.cfg.Namespace,
+		"fetcher",
+		fa.cfg.PodName,
+		fa.cfg.PushgatewayURL,
+	)
+	batchWriter := NewDbBatchWriter(articleRepository, metricsService, fa.logger, fa.cfg.FetcherConfig.DbInserterBatchSize)
 	fetcher := NewFetcher(
 		articleRepository,
 		fetcherRepository,
@@ -78,6 +84,7 @@ func (fa *FetcherApp) Run(ctx context.Context) {
 			ArticlesChanBatchSize:  fa.cfg.FetcherConfig.ArticlesChanBatchSize,
 			ErrorsChanBatchSize:    fa.cfg.FetcherConfig.ErrorsChanBatchSize,
 		},
+		metricsService,
 		devtoRunner,
 		hashnodeRunner,
 		wikiRunner,

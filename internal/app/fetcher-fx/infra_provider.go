@@ -5,6 +5,7 @@ import (
 	"go_search/config"
 	"go_search/internal/article"
 	"go_search/internal/fetcher"
+	"go_search/internal/monitoring"
 	"go_search/pkg/database"
 	"go_search/pkg/redis"
 	"log/slog"
@@ -75,14 +76,19 @@ func ProvideArticleRepository(
 	return article.NewArticleRepository(db)
 }
 
-func ProvideDbBatchWriter(articleRepository *article.ArticleRepository, logger *slog.Logger, cfg *config.AppConfig) *fetcher.DbBatchWriter {
+func ProvideDbBatchWriter(articleRepository *article.ArticleRepository, logger *slog.Logger, cfg *config.AppConfig, metricsService *monitoring.FetcherPrometheusMetricsService) *fetcher.DbBatchWriter {
 	return fetcher.NewDbBatchWriter(
 		articleRepository,
 		logger.With("component", "db_batch_writer"),
+		metricsService,
 		cfg.FetcherConfig.DbInserterBatchSize,
 	)
 }
 
 func ProvideFetcherStorage(redis *redis.AppRedis) *fetcher.Storage {
 	return fetcher.NewStorage(redis)
+}
+
+func ProvideFetcherMetrics(cfg *config.AppConfig) *monitoring.FetcherPrometheusMetricsService {
+	return monitoring.NewFetcherPrometheusMetricsService(cfg.Namespace, "fx_fetcher", cfg.PodName, cfg.PushgatewayURL)
 }

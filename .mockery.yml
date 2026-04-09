@@ -45,3 +45,5 @@ packages:
       FetcherStorage:
       BatchWriter:
       ProviderRunner:
+      FetcherMetrics:
+      BatchWriterMetrics:

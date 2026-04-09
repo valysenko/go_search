@@ -10,6 +10,16 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - go-search-network
+  pushgateway:
+    image: prom/pushgateway
+    container_name: go-search-pushgateway
+    restart: unless-stopped
+    expose:
+      - 9091
+    ports:
+      - "9091:9091"
+    networks:
+      - go-search-network
 
 networks:
   go-search-network:

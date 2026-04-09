@@ -4,6 +4,7 @@ import (
 	"go_search/config"
 	"go_search/internal/article"
 	"go_search/internal/fetcher"
+	"go_search/internal/monitoring"
 	"go_search/internal/provider/devto"
 	"go_search/internal/provider/hashnode"
 	"go_search/internal/provider/wiki"
@@ -72,7 +73,7 @@ func ProvideWikiRunner(wikiProvider wiki.WikiProvider, logger *slog.Logger, cfg 
 /*
 * FETCHER
  */
-func ProvideFetcher(articleRepository *article.ArticleRepository, fetcherStorage *fetcher.Storage, batchWriter *fetcher.DbBatchWriter, logger *slog.Logger, cfg *config.AppConfig, providerRunners []fetcher.ProviderRunner) *fetcher.Fetcher {
+func ProvideFetcher(articleRepository *article.ArticleRepository, fetcherStorage *fetcher.Storage, batchWriter *fetcher.DbBatchWriter, metricsService *monitoring.FetcherPrometheusMetricsService, logger *slog.Logger, cfg *config.AppConfig, providerRunners []fetcher.ProviderRunner) *fetcher.Fetcher {
 	fetcher := fetcher.NewFetcher(
 		articleRepository,
 		fetcherStorage,
@@ -84,6 +85,7 @@ func ProvideFetcher(articleRepository *article.ArticleRepository, fetcherStorage
 			ArticlesChanBatchSize:  cfg.FetcherConfig.ArticlesChanBatchSize,
 			ErrorsChanBatchSize:    cfg.FetcherConfig.ErrorsChanBatchSize,
 		},
+		metricsService,
 		providerRunners...,
 	)
 

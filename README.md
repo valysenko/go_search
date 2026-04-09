@@ -19,6 +19,9 @@ A distributed article aggregation and search system built to explore Go, CDC pat
 4. **Articles indexing and search:** 
     - Advanced full-text search indexing. Analyzers use char filters (html&emoji strip) and token filters (lowercase, English stopwords, stemming and search-time synonyms).
     - Articles search uses compound query where multiple conditions for different fields are checked.
+5. **Monitoring:**
+    - Prometheus scrapes metrics from the HTTP server App
+    - Multi-Source Aggregator App pushes metrics to Pushgateway. which is scraped by Prometheus.
 
 ## Documentation
 

@@ -14,7 +14,7 @@ down:
 exec:
 	docker exec -it go-search sh
 test:
-	docker exec go-search go test -v ./...
+	docker exec go-search go test -v ./... -count=1
 
 # kafka cdc
 up-kafka:

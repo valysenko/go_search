@@ -105,7 +105,10 @@ func checkConcurrentRunner(t *testing.T, pr *mocks.MockHashnodeProvider, runFn r
 
 		select {
 		case err := <-errChan:
-			assert.ErrorIs(t, err, expectedErr)
+			e := &provider.ProviderError{}
+			assert.ErrorAs(t, err, &e)
+			assert.Equal(t, expectedErr, e.Err)
+			assert.Equal(t, provider.Hashnode, e.Provider)
 		default:
 			t.Fatal("expected error, got none")
 		}

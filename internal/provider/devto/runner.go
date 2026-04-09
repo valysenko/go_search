@@ -44,7 +44,7 @@ func (dr *DevToRunner) RunConcurrently(ctx context.Context, articlesFrom time.Ti
 	query := provider.Query{Tags: dr.tags}
 
 	if err := dr.devto.FetchArticlesAsync(ctx, articlesFrom, query, articlesChan); err != nil {
-		errChan <- fmt.Errorf("devto runner failed: %w", err)
+		errChan <- &provider.ProviderError{Provider: provider.DevTo, Err: err, Msg: "devto runner failed"}
 		return
 	}
 

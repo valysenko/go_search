@@ -81,7 +81,10 @@ func TestRunConcurrently(t *testing.T) {
 		select {
 		case err := <-errChan:
 			assert.NotNil(t, err)
-			assert.ErrorIs(t, err, expectedErr)
+			e := &provider.ProviderError{}
+			assert.ErrorAs(t, err, &e)
+			assert.Equal(t, expectedErr, e.Err)
+			assert.Equal(t, provider.DevTo, e.Provider)
 		case <-time.After(10 * time.Millisecond):
 		}
 
