@@ -2,6 +2,7 @@ package fetcher
 
 import (
 	"context"
+	"fmt"
 	"go_search/config"
 	"go_search/internal/article"
 	"go_search/internal/fetcher"
@@ -10,6 +11,7 @@ import (
 	"go_search/internal/provider/wiki"
 	"go_search/pkg/database"
 	"go_search/pkg/redis"
+	"log"
 	"log/slog"
 	"os"
 )
@@ -22,23 +24,33 @@ type FetcherApp struct {
 }
 
 func NewFetcherApp(cfg *config.AppConfig) *FetcherApp {
-	appDb := database.InitDB(&database.DBConfig{
-		Host:           cfg.Host,
-		Port:           cfg.Port,
-		Username:       cfg.Username,
-		Password:       cfg.Password,
-		DbName:         cfg.DbName,
-		MaxConns:       cfg.MaxConns,
-		MinConns:       cfg.MinConns,
-		ConnectTimeout: cfg.ConnectTimeout,
+	db, err := database.InitDB(&database.DBConfig{
+		Host:           cfg.PostgreSqlConfig.Host,
+		Port:           cfg.PostgreSqlConfig.Port,
+		Username:       cfg.PostgreSqlConfig.Username,
+		Password:       cfg.PostgreSqlConfig.Password,
+		DbName:         cfg.PostgreSqlConfig.DbName,
+		MaxConns:       cfg.PostgreSqlConfig.MaxConns,
+		MinConns:       cfg.PostgreSqlConfig.MinConns,
+		ConnectTimeout: cfg.PostgreSqlConfig.ConnectTimeout,
 	})
-	appDb.RunMigrations("./migrations")
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		log.Fatalf("failed to ping database: %v", err)
+	}
+	db.RunMigrations("./migrations")
 
-	appRedis := redis.InitRedis(&redis.RedisConfig{
+	appRedis, err := redis.InitRedis(&redis.RedisConfig{
 		RedisUrl:      cfg.RedisConfig.RedisUrl,
 		RedisPassword: cfg.RedisConfig.RedisPassword,
 		RedisDB:       cfg.RedisConfig.RedisDB,
 	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Connect to redis failed: %v\n", err)
+		os.Exit(1)
+	}
 
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -48,7 +60,7 @@ func NewFetcherApp(cfg *config.AppConfig) *FetcherApp {
 	slog.SetDefault(logger)
 
 	return &FetcherApp{
-		db:     appDb,
+		db:     db,
 		redis:  appRedis,
 		cfg:    cfg,
 		logger: logger,

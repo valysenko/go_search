@@ -9,13 +9,14 @@ import (
 	"testing"
 
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/stretchr/testify/assert"
 )
 
 // PostgreSQL helpers
 
 func setupPostgresTestDB(t *testing.T) *database.AppDB {
 	t.Helper()
-	db := database.InitDB(&database.DBConfig{
+	db, err := database.InitDB(&database.DBConfig{
 		Host:           "go-search-postgres-test",
 		Port:           "5432",
 		Username:       "root",
@@ -25,6 +26,7 @@ func setupPostgresTestDB(t *testing.T) *database.AppDB {
 		MinConns:       1,
 		ConnectTimeout: 5,
 	})
+	assert.NoError(t, err)
 	db.RunMigrations("../../migrations")
 
 	return db

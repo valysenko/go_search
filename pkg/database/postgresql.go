@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
+	"time"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -15,25 +15,33 @@ type AppDB struct {
 	Postgresql *pgxpool.Pool
 }
 
-func InitDB(dbConfig *DBConfig) *AppDB {
+func InitDB(dbConfig *DBConfig) (*AppDB, error) {
 	connStr := dbConfig.ProvideDSN()
-	poolConfig, _ := pgxpool.ParseConfig(connStr)
+	poolConfig, err := pgxpool.ParseConfig(connStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse pg config: %w", err)
+	}
 
 	poolConfig.MinConns = int32(dbConfig.MinConns)
 	ctx, _ := context.WithCancel(context.Background())
 	pool, err := pgxpool.ConnectConfig(ctx, poolConfig)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Connect to database failed: %v\n", err)
-		panic(1)
+		return nil, fmt.Errorf("connect to database: %w", err)
 	}
 
 	return &AppDB{
 		Postgresql: pool,
-	}
+	}, nil
 }
 
 func (db *AppDB) Close() {
 	db.Postgresql.Close()
+}
+
+func (db *AppDB) Ping() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	return db.Postgresql.Ping(ctx)
 }
 
 func (db *AppDB) BeginTransaction(ctx context.Context) (pgx.Tx, error) {

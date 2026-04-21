@@ -9,6 +9,7 @@ import (
 	"go_search/internal/monitoring"
 	"go_search/pkg/database"
 	"go_search/pkg/es"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -43,7 +44,7 @@ type HttpServerApp struct {
 
 func NewHttpServerApp(cfg *config.HttpAppConfig) *HttpServerApp {
 	appName := "http_server_app"
-	appDb := database.InitDB(&database.DBConfig{
+	db, err := database.InitDB(&database.DBConfig{
 		Host:           cfg.PostgreSqlConfig.Host,
 		Port:           cfg.PostgreSqlConfig.Port,
 		Username:       cfg.PostgreSqlConfig.Username,
@@ -53,7 +54,13 @@ func NewHttpServerApp(cfg *config.HttpAppConfig) *HttpServerApp {
 		MinConns:       cfg.PostgreSqlConfig.MinConns,
 		ConnectTimeout: cfg.PostgreSqlConfig.ConnectTimeout,
 	})
-	appDb.RunMigrations("./migrations")
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		log.Fatalf("failed to ping database: %v", err)
+	}
+	db.RunMigrations("./migrations")
 
 	esClient, err := es.NewClient(&es.ESConfig{
 		Addresses: []string{
@@ -88,7 +95,7 @@ func NewHttpServerApp(cfg *config.HttpAppConfig) *HttpServerApp {
 	fiber := fiber.New(fCfg)
 
 	app := &HttpServerApp{
-		db:          appDb,
+		db:          db,
 		es:          esClient,
 		logger:      logger,
 		server:      fiber,

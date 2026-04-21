@@ -2,12 +2,14 @@ package fetcherfx
 
 import (
 	"context"
+	"fmt"
 	"go_search/config"
 	"go_search/internal/article"
 	"go_search/internal/fetcher"
 	"go_search/internal/monitoring"
 	"go_search/pkg/database"
 	"go_search/pkg/redis"
+	"log"
 	"log/slog"
 	"os"
 
@@ -27,7 +29,7 @@ func ProvideLogger() *slog.Logger {
 }
 
 func ProvideDatabase(lc fx.Lifecycle, cfg *config.AppConfig, logger *slog.Logger) *database.AppDB {
-	db := database.InitDB(&database.DBConfig{
+	db, err := database.InitDB(&database.DBConfig{
 		Host:           cfg.PostgreSqlConfig.Host,
 		Port:           cfg.PostgreSqlConfig.Port,
 		Username:       cfg.PostgreSqlConfig.Username,
@@ -37,6 +39,12 @@ func ProvideDatabase(lc fx.Lifecycle, cfg *config.AppConfig, logger *slog.Logger
 		MinConns:       cfg.PostgreSqlConfig.MinConns,
 		ConnectTimeout: cfg.PostgreSqlConfig.ConnectTimeout,
 	})
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		log.Fatalf("failed to ping database: %v", err)
+	}
 	db.RunMigrations("./migrations")
 	logger.Info("database connected")
 
@@ -52,11 +60,16 @@ func ProvideDatabase(lc fx.Lifecycle, cfg *config.AppConfig, logger *slog.Logger
 }
 
 func ProvideRedis(lc fx.Lifecycle, cfg *config.AppConfig, logger *slog.Logger) *redis.AppRedis {
-	appRedis := redis.InitRedis(&redis.RedisConfig{
+	appRedis, err := redis.InitRedis(&redis.RedisConfig{
 		RedisUrl:      cfg.RedisConfig.RedisUrl,
 		RedisPassword: cfg.RedisConfig.RedisPassword,
 		RedisDB:       cfg.RedisConfig.RedisDB,
 	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Connect to redis failed: %v\n", err)
+		os.Exit(1)
+	}
+
 	logger.Info("redis connected")
 
 	lc.Append(fx.Hook{

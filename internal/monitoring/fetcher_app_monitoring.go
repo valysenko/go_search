@@ -16,6 +16,7 @@ type FetcherPrometheusMetricsService struct {
 	jobName            string
 }
 
+// TODO: figh cardinality because of run_id label
 func NewFetcherPrometheusMetricsService(namespace, subsystem, podName string, pushgatewayURL string) *FetcherPrometheusMetricsService {
 	fetcherJobName := "fetcher_job"
 	constLabels := map[string]string{"podName": podName}

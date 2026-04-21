@@ -6,6 +6,7 @@ import (
 	"go_search/internal/article"
 	"go_search/pkg/database"
 	"go_search/pkg/es"
+	"log"
 	"log/slog"
 	"os"
 
@@ -25,7 +26,7 @@ func ProvideLogger() *slog.Logger {
 }
 
 func ProvideDatabase(lc fx.Lifecycle, cfg *config.HttpAppConfig, logger *slog.Logger) *database.AppDB {
-	db := database.InitDB(&database.DBConfig{
+	db, err := database.InitDB(&database.DBConfig{
 		Host:           cfg.PostgreSqlConfig.Host,
 		Port:           cfg.PostgreSqlConfig.Port,
 		Username:       cfg.PostgreSqlConfig.Username,
@@ -35,6 +36,13 @@ func ProvideDatabase(lc fx.Lifecycle, cfg *config.HttpAppConfig, logger *slog.Lo
 		MinConns:       cfg.PostgreSqlConfig.MinConns,
 		ConnectTimeout: cfg.PostgreSqlConfig.ConnectTimeout,
 	})
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		log.Fatalf("failed to ping database: %v", err)
+	}
+
 	db.RunMigrations("./migrations")
 	logger.Info("database connected")
 

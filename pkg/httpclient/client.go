@@ -77,7 +77,7 @@ func NewHttpClient(timeoutSeconds int, baseUrl string) *HttpClient {
 	}
 }
 
-func (c *HttpClient) Get(ctx context.Context, path string, headers Headers, out any) error {
+func (c *HttpClient) Get(ctx context.Context, path string, headers Headers, out any) (retErr error) {
 	rawPath, query, _ := strings.Cut(path, "?")
 	baseUrl := strings.TrimSuffix(c.baseUrl, "/")
 	cleanPath := strings.TrimPrefix(rawPath, "/")
@@ -118,7 +118,17 @@ func (c *HttpClient) Get(ctx context.Context, path string, headers Headers, out 
 			Err:     err,
 		}
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && retErr == nil {
+			retErr = &RequestError{
+				Type:       ErrorTypeNetwork,
+				Message:    "failed to close response body",
+				StatusCode: resp.StatusCode,
+				Url:        fullUrl,
+				Err:        closeErr,
+			}
+		}
+	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return c.handleErrorStatus(resp, fullUrl)
@@ -163,39 +173,4 @@ func (c *HttpClient) handleErrorStatus(resp *http.Response, fullUrl string) erro
 		Url:             fullUrl,
 		RawResponseBody: body,
 	}
-}
-
-// example: methods with receivers can't use generics
-func notUsedGet[T any](ctx context.Context, c *HttpClient, path string, headers Headers) (*T, error) {
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		c.baseUrl+path,
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
-	}
-
-	var result T
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
 }
